@@ -11,6 +11,8 @@ export const materialService = {
   getMatches: (params) => api.get('/materials/matches', { params }),
   placeBid: (id, amount) => api.post(`/materials/${id}/bid`, { amount }),
   getBids: (id) => api.get(`/materials/${id}/bids`),
+  acceptBid: (id, bidId) => api.post(`/materials/${id}/accept-bid`, { bidId }),
+  recordView: (id) => api.post(`/materials/${id}/view`),
 };
 
 /** Transaction service */

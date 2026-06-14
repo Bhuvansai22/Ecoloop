@@ -1,7 +1,7 @@
 /**
  * MaterialDetailPage — full listing view with transaction request
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { materialService, transactionService } from '../services';
 import { useAuth } from '../context/AuthContext';
@@ -10,7 +10,7 @@ import {
   MapPin, Package, DollarSign, Leaf, BadgeCheck, Edit2,
   Trash2, ArrowLeft, Eye, CalendarDays, Tag, Gavel, MessageSquare
 } from 'lucide-react';
-import { formatDistanceToNow, format } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { useSocket } from '../context/SocketContext';
 
 const MaterialDetailPage = () => {
@@ -29,8 +29,12 @@ const MaterialDetailPage = () => {
   const [bids,      setBids]      = useState([]);
   const [bidLoading, setBidLoading] = useState(false);
   const socket = useSocket();
+  // Guard against React StrictMode double-invocation causing views to count twice
+  const fetchedRef = useRef(false);
 
   useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
     materialService.getById(id)
       .then(({ data }) => { 
         setMaterial(data.material); 
@@ -38,6 +42,8 @@ const MaterialDetailPage = () => {
         if (data.material?.isAuction) {
           materialService.getBids(id).then(res => setBids(res.data.bids)).catch(console.error);
         }
+        // Record view separately — server deduplicates by IP per hour
+        materialService.recordView(id).catch(() => {});
       })
       .catch(() => { toast.error('Material not found'); navigate('/marketplace'); });
   }, [id]);
@@ -103,6 +109,17 @@ const MaterialDetailPage = () => {
       toast.error(err.response?.data?.message || 'Bid failed');
     } finally {
       setBidLoading(false);
+    }
+  };
+
+  const handleAcceptBid = async (bidId) => {
+    if (!window.confirm('Accept this bid and close the listing?')) return;
+    try {
+      await materialService.acceptBid(id, bidId);
+      toast.success('Bid accepted! Material marked as sold.');
+      setMaterial(prev => ({ ...prev, status: 'sold' }));
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to accept bid');
     }
   };
 
@@ -293,10 +310,11 @@ const MaterialDetailPage = () => {
               </div>
             )}
 
-            {canBuy && status === 'active' && isAuction && (
+            {/* Auction Section */}
+            {isAuction && status === 'active' && (
               <div className="glass-card p-4 space-y-3">
                 <h3 className="text-sm font-semibold text-eco-300 flex items-center justify-between">
-                  <span>Place a Bid</span>
+                  <span>{isOwner ? 'Current Bids' : 'Place a Bid'}</span>
                   {isAuctionActive ? (
                     <span className="text-eco-400 text-xs">Ends {formatDistanceToNow(new Date(auctionDetails.endTime), { addSuffix: true })}</span>
                   ) : (
@@ -304,7 +322,8 @@ const MaterialDetailPage = () => {
                   )}
                 </h3>
                 
-                {isAuctionActive && (
+                {/* Only Buyers can place bids */}
+                {canBuy && isAuctionActive && (
                   <div className="flex gap-2">
                     <input
                       type="number"
@@ -319,20 +338,34 @@ const MaterialDetailPage = () => {
                   </div>
                 )}
 
+                {/* Everyone can see the list, but only Owner sees "Accept" */}
                 {bids.length > 0 ? (
-                  <div className="mt-4 border-t border-white/10 pt-3 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+                  <div className="mt-4 border-t border-white/10 pt-3 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
                     <div className="text-xs text-eco-700 mb-2">Recent Bids</div>
                     <div className="space-y-2">
                       {bids.map(b => (
-                        <div key={b._id} className="flex justify-between items-center text-sm p-2 bg-white/5 rounded-lg">
-                          <span className="text-eco-300">{b.bidder.name}</span>
-                          <span className="font-bold text-eco-400">₹{b.amount.toLocaleString()}</span>
+                        <div key={b._id} className="flex justify-between items-center text-sm p-2 bg-white/5 rounded-lg border border-white/5">
+                          <div>
+                            <span className="text-eco-300 font-medium block">{b.bidder?.name || 'Anonymous'}</span>
+                            <span className="text-[10px] text-eco-800">{b.createdAt ? new Date(b.createdAt).toLocaleDateString() : ''}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="font-bold text-eco-400">₹{b.amount.toLocaleString()}</span>
+                            {isOwner && (
+                              <button 
+                                onClick={() => handleAcceptBid(b._id)}
+                                className="text-[10px] bg-eco-500/10 text-eco-400 border border-eco-500/30 px-2 py-1 rounded hover:bg-eco-500 hover:text-white transition-all font-bold"
+                              >
+                                Accept
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
                 ) : (
-                  <div className="text-xs text-eco-700 text-center mt-2">No bids yet. Be the first!</div>
+                  <div className="text-xs text-eco-700 text-center mt-2">No bids yet.</div>
                 )}
               </div>
             )}

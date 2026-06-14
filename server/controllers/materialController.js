@@ -3,11 +3,17 @@
  * CRUD for waste material listings + intelligent matching
  */
 
-const Material = require('../models/Material');
-const Bid = require('../models/Bid');
+const Material    = require('../models/Material');
+const Bid         = require('../models/Bid');
+const Transaction = require('../models/Transaction');
 const { cloudinary } = require('../middleware/upload');
 const { getCarbonFactor } = require('../utils/carbonCalc');
 const { buildGeoNearQuery } = require('../utils/geoUtils');
+
+// In-memory dedup cache: "materialId:ip" -> timestamp
+// Prevents the same visitor counting more than once per hour
+const viewCache = new Map();
+const VIEW_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 /**
  * POST /api/materials
@@ -73,10 +79,13 @@ const getMaterials = async (req, res) => {
     const {
       page = 1, limit = 12, search, category, minPrice, maxPrice,
       minQty, maxQty, lat, lng, radius = 100, sort = '-createdAt',
-      status = 'active',
+      status,
     } = req.query;
 
-    const query = { status };
+    // Default: show both active and sold; allow explicit filter via ?status=
+    const query = {
+      status: status ? status : { $in: ['active', 'sold'] },
+    };
 
     // Text search
     if (search) {
@@ -131,7 +140,7 @@ const getMaterials = async (req, res) => {
 
 /**
  * GET /api/materials/:id
- * Get a single material by ID (increments view count)
+ * Get a single material by ID — does NOT increment views (use POST /:id/view)
  */
 const getMaterialById = async (req, res) => {
   try {
@@ -140,11 +149,39 @@ const getMaterialById = async (req, res) => {
 
     if (!material) return res.status(404).json({ message: 'Material not found' });
 
-    // Increment view count
-    material.views += 1;
-    await material.save({ validateBeforeSave: false });
-
     res.json({ material });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/**
+ * POST /api/materials/:id/view
+ * Increment view count — deduplicated per IP per hour so double-renders don't double-count
+ */
+const recordView = async (req, res) => {
+  try {
+    const ip  = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+    const key = `${req.params.id}:${ip}`;
+    const now = Date.now();
+
+    const lastSeen = viewCache.get(key);
+    if (lastSeen && now - lastSeen < VIEW_TTL_MS) {
+      // Already counted this visitor recently — return silently
+      return res.json({ counted: false });
+    }
+
+    // Check ownership — don't count seller's own views
+    const material = await Material.findById(req.params.id).select('seller views');
+    if (!material) return res.status(404).json({ message: 'Material not found' });
+
+    const isOwner = req.user && material.seller.toString() === req.user._id.toString();
+    if (!isOwner) {
+      await Material.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } });
+      viewCache.set(key, now);
+    }
+
+    res.json({ counted: !isOwner });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -374,8 +411,73 @@ const getBids = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/materials/:id/accept-bid
+ * Seller accepts a specific bid
+ */
+const acceptBid = async (req, res) => {
+  try {
+    const { bidId } = req.body;
+    const material = await Material.findById(req.params.id);
+
+    if (!material) return res.status(404).json({ message: 'Material not found' });
+
+    // Verify ownership
+    if (material.seller.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to accept bids for this listing' });
+    }
+
+    const bid = await Bid.findById(bidId).populate('bidder', 'name companyName');
+    if (!bid) return res.status(404).json({ message: 'Bid not found' });
+
+    if (bid.material.toString() !== material._id.toString()) {
+      return res.status(400).json({ message: 'Bid does not belong to this material' });
+    }
+
+    // Calculate CO2 saved
+    const carbonSaved = Math.round(
+      (material.quantity?.value || 0) * (material.carbonFactor || 200)
+    );
+
+    // Create a completed Transaction so dashboard stats update
+    await Transaction.create({
+      buyer:       bid.bidder._id,
+      seller:      req.user._id,
+      material:    material._id,
+      status:      'completed',
+      completedAt: new Date(),
+      quantity:    { value: material.quantity?.value || 0, unit: material.quantity?.unit || 'tonnes' },
+      agreedPrice: bid.amount,
+      carbonSaved,
+      sellerNote:  'Deal closed via auction bid acceptance.',
+    });
+
+    // Mark material as sold and record winning bid
+    material.status = 'sold';
+    if (material.isAuction) {
+      material.auctionDetails.winningBid = bid._id;
+    }
+    await material.save();
+
+    // Emit socket event to notify the winning bidder
+    const io = req.app.get('io');
+    if (io) {
+      io.to(bid.bidder._id.toString()).emit('bidAccepted', {
+        materialId: material._id,
+        bidId:      bid._id,
+        amount:     bid.amount,
+        title:      material.title,
+      });
+    }
+
+    res.json({ message: 'Bid accepted successfully', material });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 module.exports = {
-  createMaterial, getMaterials, getMaterialById,
+  createMaterial, getMaterials, getMaterialById, recordView,
   updateMaterial, deleteMaterial, getMatches, getMyMaterials,
-  placeBid, getBids,
+  placeBid, getBids, acceptBid,
 };

@@ -21,7 +21,7 @@ const ProfilePage = () => {
   const [avatar,   setAvatar]   = useState(null);
   const [preview,  setPreview]  = useState(user?.avatar || '');
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm();
+  const { register, handleSubmit, reset } = useForm();
 
   useEffect(() => {
     if (user) {

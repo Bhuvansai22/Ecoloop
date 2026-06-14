@@ -2,12 +2,10 @@
  * MarketplacePage — listings grid with filter sidebar
  */
 import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import FilterSidebar from '../components/FilterSidebar';
 import { materialService } from '../services';
 import MaterialCard from '../components/MaterialCard';
-import FilterSidebar from '../components/FilterSidebar';
 import { Search, Loader2, Package, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
 import debounce from '../utils/debounce';
 
 const DEFAULT_FILTERS = {
@@ -16,9 +14,6 @@ const DEFAULT_FILTERS = {
 };
 
 const MarketplacePage = () => {
-  const { user } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
-
   const [materials, setMaterials]  = useState([]);
   const [total,     setTotal]      = useState(0);
   const [page,      setPage]       = useState(1);

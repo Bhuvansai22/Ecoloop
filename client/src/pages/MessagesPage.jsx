@@ -59,11 +59,18 @@ const MessagesPage = () => {
 
   useEffect(() => {
     if (socket && user) {
-      socket.emit('joinUser', user._id);
+      // Join personal room immediately and on every reconnect
+      const joinRoom = () => socket.emit('joinUser', user._id);
+      joinRoom();
+      socket.on('connect', joinRoom);
       
       socket.on('receiveMessage', (msg) => {
+        const senderId    = msg.sender?._id   || msg.sender;
+        const receiverId  = msg.receiver?._id || msg.receiver;
+        const activeId    = activeUser?._id;
+
         // Update messages if it's the active conversation
-        if (activeUser && (msg.sender._id === activeUser._id || msg.receiver._id === activeUser._id)) {
+        if (activeId && (senderId === activeId || receiverId === activeId)) {
           setMessages(prev => {
             if (prev.find(m => m._id === msg._id)) return prev;
             return [...prev, msg];
@@ -73,26 +80,31 @@ const MessagesPage = () => {
 
         // Update conversation list
         setConversations(prev => {
-          const isFromActive = activeUser && msg.sender._id === activeUser._id;
-          const otherUserId = msg.sender._id === user._id ? msg.receiver._id : msg.sender._id;
-          const otherUser = msg.sender._id === user._id ? msg.receiver : msg.sender;
-          
+          const otherUserId = senderId === user._id ? receiverId : senderId;
+          const otherUser   = senderId === user._id ? (msg.receiver?._id ? msg.receiver : null) : (msg.sender?._id ? msg.sender : null);
+          if (!otherUser) return prev;
+
           const existingIdx = prev.findIndex(c => c.user._id === otherUserId);
+          const isFromActive = activeUser?._id === otherUserId;
+
           if (existingIdx > -1) {
             const updated = [...prev];
             updated[existingIdx] = {
-              user: otherUser,
+              ...updated[existingIdx],
               lastMessage: msg,
-              unreadCount: (!isFromActive && msg.sender._id !== user._id) ? prev[existingIdx].unreadCount + 1 : 0
+              unreadCount: (!isFromActive && senderId !== user._id) ? updated[existingIdx].unreadCount + 1 : 0,
             };
             return updated.sort((a, b) => new Date(b.lastMessage.createdAt) - new Date(a.lastMessage.createdAt));
           } else {
-            return [{ user: otherUser, lastMessage: msg, unreadCount: (!isFromActive && msg.sender._id !== user._id) ? 1 : 0 }, ...prev];
+            return [{ user: otherUser, lastMessage: msg, unreadCount: (!isFromActive && senderId !== user._id) ? 1 : 0 }, ...prev];
           }
         });
       });
 
-      return () => socket.off('receiveMessage');
+      return () => {
+        socket.off('connect', joinRoom);
+        socket.off('receiveMessage');
+      };
     }
   }, [socket, user, activeUser]);
 
@@ -104,7 +116,7 @@ const MessagesPage = () => {
       // Optimistic update handled by socket
       await messageService.sendMessage(activeUser._id, newMessage);
       setNewMessage('');
-    } catch (err) {
+    } catch {
       toast.error('Failed to send message');
     }
   };

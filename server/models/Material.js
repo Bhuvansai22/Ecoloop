@@ -102,6 +102,10 @@ const materialSchema = new mongoose.Schema(
       startingPrice: { type: Number, min: 0 },
       currentHighestBid: { type: Number, min: 0, default: 0 },
       endTime: { type: Date },
+      winningBid: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Bid',
+      },
     },
   },
   { timestamps: true }

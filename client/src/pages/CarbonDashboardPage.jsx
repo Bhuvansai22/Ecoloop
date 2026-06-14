@@ -1,8 +1,9 @@
 /**
  * CarbonDashboardPage — CO₂ impact charts and ESG stats
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { userService } from '../services';
+import { useAuth } from '../context/AuthContext';
 import { MonthlyBarChart, CategoryPieChart } from '../components/CarbonChart';
 import { Leaf, TreePine, Car, Plane, Home, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -20,10 +21,11 @@ function equivalents(kg) {
 }
 
 const CarbonDashboardPage = () => {
+  const { user } = useAuth();
   const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(true);
   const [generatingPdf, setGeneratingPdf] = useState(false);
-  const certificateRef = React.useRef(null);
+  const certificateRef = useRef(null);
 
   useEffect(() => {
     userService.getCarbon()
@@ -191,9 +193,17 @@ const CarbonDashboardPage = () => {
                   <p style={{ fontSize: '24px', color: '#a3a3a3', marginBottom: '40px' }}>
                     This certifies that
                   </p>
-                  <h2 style={{ fontSize: '48px', fontWeight: 'bold', marginBottom: '40px', borderBottom: '2px solid #22c55e', display: 'inline-block', paddingBottom: '10px' }}>
-                    {data?.user?.name || 'Valued Partner'}
+                  <h2 style={{ fontSize: '44px', fontWeight: 'bold', marginBottom: '8px', borderBottom: '2px solid #22c55e', display: 'inline-block', paddingBottom: '10px' }}>
+                    {user?.companyName || user?.name || 'Valued Partner'}
                   </h2>
+                  {user?.companyName && (
+                    <div style={{ fontSize: '20px', color: '#86efac', marginBottom: '8px' }}>
+                      {user.name}
+                    </div>
+                  )}
+                  <div style={{ fontSize: '16px', color: '#4ade80', marginBottom: '30px', textTransform: 'uppercase', letterSpacing: '2px' }}>
+                    {user?.role === 'seller' ? 'Waste Material Supplier' : 'Circular Economy Buyer'}
+                  </div>
                   <p style={{ fontSize: '24px', color: '#a3a3a3', marginBottom: '40px', maxWidth: '800px', margin: '0 auto 40px auto', lineHeight: '1.5' }}>
                     has demonstrated outstanding commitment to the circular economy by actively participating in waste diversion and material reuse.
                   </p>

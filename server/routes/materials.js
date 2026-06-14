@@ -1,16 +1,17 @@
 const express = require('express');
 const router  = express.Router();
 const {
-  createMaterial, getMaterials, getMaterialById,
+  createMaterial, getMaterials, getMaterialById, recordView,
   updateMaterial, deleteMaterial, getMatches, getMyMaterials,
-  placeBid, getBids,
+  placeBid, getBids, acceptBid,
 } = require('../controllers/materialController');
 const { protect, authorize } = require('../middleware/auth');
 const { uploadMaterial } = require('../middleware/upload');
 
 // Public routes
-// GET  /api/materials
 router.get('/', getMaterials);
+// View route — public, deduplicated server-side (no auth required)
+router.post('/:id/view', recordView);
 
 // Authenticated routes
 router.use(protect);
@@ -36,5 +37,6 @@ router.delete('/:id', deleteMaterial);
 // Bidding routes
 router.post('/:id/bid', placeBid);
 router.get('/:id/bids', getBids);
+router.post('/:id/accept-bid', authorize('seller', 'admin'), acceptBid);
 
 module.exports = router;

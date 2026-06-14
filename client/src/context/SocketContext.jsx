@@ -11,9 +11,15 @@ export const SocketProvider = ({ children }) => {
   useEffect(() => {
     if (user) {
       const token = localStorage.getItem('ecoloop_token');
-      const newSocket = io(import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000', {
+      const serverUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5001';
+      const newSocket = io(serverUrl, {
         auth: { token },
+        transports: ['websocket', 'polling'],
       });
+
+      // Join personal room immediately so messages are received on ANY page
+      const joinRoom = () => newSocket.emit('joinUser', user._id);
+      newSocket.on('connect', joinRoom);
 
       setSocket(newSocket);
 
@@ -31,6 +37,7 @@ export const SocketProvider = ({ children }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useSocket = () => {
   return useContext(SocketContext);
 };

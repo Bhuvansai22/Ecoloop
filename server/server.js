@@ -19,10 +19,15 @@ const allowedOrigins = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(','
 
 const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true); // Allow non-browser requests
-    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+    if (
+      !origin || 
+      allowedOrigins.includes(origin) || 
+      origin.includes('localhost') || 
+      origin.endsWith('.vercel.app')
+    ) {
       callback(null, true);
     } else {
+      console.error('CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },

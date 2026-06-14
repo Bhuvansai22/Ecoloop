@@ -2,7 +2,8 @@
  * TransactionCard — for Dashboard and Transactions list
  */
 import { formatDistanceToNow } from 'date-fns';
-import { Leaf, ChevronRight, Package, User } from 'lucide-react';
+import { Leaf, Package, User, MessageSquare } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const STATUS_CONFIG = {
   pending:   { color: 'bg-amber-500/20 text-amber-400',  label: 'Pending' },
@@ -16,6 +17,11 @@ const TransactionCard = ({ transaction, onAction, currentUserId }) => {
   const { material, buyer, seller, status, carbonSaved, quantity, createdAt, message } = transaction;
   const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
   const isSeller = seller?._id === currentUserId || seller === currentUserId;
+  const navigate = useNavigate();
+
+  // The other party to message
+  const otherParty = isSeller ? buyer : seller;
+  const otherPartyId = otherParty?._id || otherParty;
 
   return (
     <div className="glass-card p-4 hover:border-eco-500/20 transition-all">
@@ -64,35 +70,48 @@ const TransactionCard = ({ transaction, onAction, currentUserId }) => {
         </div>
       </div>
 
-      {/* Action buttons for seller on pending transactions */}
-      {isSeller && status === 'pending' && onAction && (
-        <div className="flex gap-2 mt-3 pt-3 border-t border-white/[0.06]">
+      {/* Action buttons */}
+      <div className="mt-3 pt-3 border-t border-white/[0.06] flex gap-2 flex-wrap">
+        {/* Message button — always visible for both parties */}
+        {otherPartyId && (
           <button
-            onClick={() => onAction(transaction._id, 'accepted')}
-            className="flex-1 btn-primary text-xs py-1.5 px-3"
+            onClick={() => navigate(`/messages?user=${otherPartyId}`)}
+            className="flex items-center gap-1.5 text-xs bg-white/5 hover:bg-eco-500/10 text-eco-600 hover:text-eco-400 border border-white/10 hover:border-eco-500/30 px-3 py-1.5 rounded-lg transition-all"
           >
-            Accept
+            <MessageSquare className="w-3.5 h-3.5" />
+            Message {isSeller ? 'Buyer' : 'Seller'}
           </button>
-          <button
-            onClick={() => onAction(transaction._id, 'rejected')}
-            className="flex-1 btn-danger text-xs py-1.5 px-3"
-          >
-            Decline
-          </button>
-        </div>
-      )}
-      {isSeller && status === 'accepted' && onAction && (
-        <div className="mt-3 pt-3 border-t border-white/[0.06]">
+        )}
+
+        {/* Seller-only deal actions */}
+        {isSeller && status === 'pending' && onAction && (
+          <>
+            <button
+              onClick={() => onAction(transaction._id, 'accepted')}
+              className="flex-1 btn-primary text-xs py-1.5 px-3"
+            >
+              Accept
+            </button>
+            <button
+              onClick={() => onAction(transaction._id, 'rejected')}
+              className="flex-1 btn-danger text-xs py-1.5 px-3"
+            >
+              Decline
+            </button>
+          </>
+        )}
+        {isSeller && status === 'accepted' && onAction && (
           <button
             onClick={() => onAction(transaction._id, 'completed')}
-            className="w-full btn-primary text-xs py-1.5"
+            className="flex-1 btn-primary text-xs py-1.5"
           >
             Mark as Completed
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
 
 export default TransactionCard;
+
