@@ -1,7 +1,5 @@
-/**
- * EcoLoop — server.js
- * Main entry point for the Express + MongoDB backend
- */
+// Set DNS servers for Node.js process to bypass local SRV DNS resolution failures
+require('dns').setServers(['8.8.8.8', '8.8.4.4']);
 
 const express    = require('express');
 const mongoose   = require('mongoose');

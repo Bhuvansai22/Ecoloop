@@ -41,7 +41,7 @@ The bidding system allows sellers to list materials as auctions. Buyers place bi
 A core innovation of EcoLoop is the automated calculation of CO₂ savings. Each material category is assigned a carbon factor (kg CO₂ saved per unit recycled). Upon transaction completion, the system calculates the total carbon saved (`quantity * carbonFactor`) and updates the user's dashboard. This data is visualized using React charting libraries and compiled into downloadable Green Certificates generated via `html2canvas` and `jsPDF`.
 
 ### 4.4 Real-Time Messaging
-A built-in messaging system facilitates negotiation and logistics planning. The backend utilizes Socket.io to push messages instantly. To optimize performance and ensure message delivery regardless of the user's current view, the socket connection joins a personalized room (`joinUser`) globally upon authentication.
+A built-in, secure messaging system facilitates negotiations, transaction coordination, and logistics planning. The backend utilizes Socket.io to push messages instantly. To optimize performance and ensure message delivery regardless of the user's current view, the socket connection joins a personalized room (`joinUser`) globally upon authentication. Crucially, the platform dynamically extracts unique transaction histories to populate a "Trading Partners" contact directory. This directory allows buyers to message any seller they have purchased from, and sellers to initiate chats with their buyers. Since queries dynamically map messages strictly to the authenticated user IDs, communication remains completely confidential and secure between the two participating parties.
 
 ## 5. Results & Evaluation
 Initial testing demonstrates that EcoLoop effectively streamlines the waste trading process. 

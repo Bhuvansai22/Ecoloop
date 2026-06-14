@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useSocket } from '../context/SocketContext';
-import { messageService } from '../services';
+import { messageService, transactionService } from '../services';
 import { useAuth } from '../context/AuthContext';
 import { Send, MessageSquare } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -14,10 +14,12 @@ const MessagesPage = () => {
   const initialUser = searchParams.get('user');
 
   const [conversations, setConversations] = useState([]);
+  const [partners, setPartners] = useState([]);
   const [activeUser, setActiveUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loadingConvos, setLoadingConvos] = useState(true);
+  const [loadingPartners, setLoadingPartners] = useState(true);
   
   const messagesEndRef = useRef(null);
 
@@ -26,20 +28,49 @@ const MessagesPage = () => {
   };
 
   useEffect(() => {
-    messageService.getConversations()
-      .then(({ data }) => {
-        setConversations(data.conversations);
+    if (!user?._id) return;
+
+    const fetchConvos = messageService.getConversations().then(({ data }) => data.conversations);
+    const fetchPartners = transactionService.getAll({ limit: 100 }).then(({ data }) => {
+      const uniquePartners = [];
+      const seen = new Set();
+      data.transactions.forEach(t => {
+        const other = t.seller?._id === user._id ? t.buyer : t.seller;
+        if (other && other._id && other._id !== user._id && !seen.has(other._id)) {
+          seen.add(other._id);
+          uniquePartners.push(other);
+        }
+      });
+      return uniquePartners;
+    });
+
+    Promise.all([fetchConvos, fetchPartners])
+      .then(([convos, uniquePartners]) => {
+        setConversations(convos);
+        setPartners(uniquePartners);
+
         if (initialUser) {
-          const existing = data.conversations.find(c => c.user._id === initialUser);
-          if (existing) setActiveUser(existing.user);
-          else setActiveUser({ _id: initialUser, name: 'Loading user...' }); // Needs user fetch if not in convos
-        } else if (data.conversations.length > 0) {
-          setActiveUser(data.conversations[0].user);
+          const existingConvo = convos.find(c => c.user._id === initialUser);
+          if (existingConvo) {
+            setActiveUser(existingConvo.user);
+          } else {
+            const partnerUser = uniquePartners.find(p => p._id === initialUser);
+            if (partnerUser) {
+              setActiveUser(partnerUser);
+            } else {
+              setActiveUser({ _id: initialUser, name: 'Partner' });
+            }
+          }
+        } else if (convos.length > 0) {
+          setActiveUser(convos[0].user);
         }
       })
       .catch(console.error)
-      .finally(() => setLoadingConvos(false));
-  }, [initialUser]);
+      .finally(() => {
+        setLoadingConvos(false);
+        setLoadingPartners(false);
+      });
+  }, [initialUser, user?._id]);
 
   useEffect(() => {
     if (activeUser?._id) {
@@ -59,7 +90,6 @@ const MessagesPage = () => {
 
   useEffect(() => {
     if (socket && user) {
-      // Join personal room immediately and on every reconnect
       const joinRoom = () => socket.emit('joinUser', user._id);
       joinRoom();
       socket.on('connect', joinRoom);
@@ -69,7 +99,6 @@ const MessagesPage = () => {
         const receiverId  = msg.receiver?._id || msg.receiver;
         const activeId    = activeUser?._id;
 
-        // Update messages if it's the active conversation
         if (activeId && (senderId === activeId || receiverId === activeId)) {
           setMessages(prev => {
             if (prev.find(m => m._id === msg._id)) return prev;
@@ -78,7 +107,6 @@ const MessagesPage = () => {
           scrollToBottom();
         }
 
-        // Update conversation list
         setConversations(prev => {
           const otherUserId = senderId === user._id ? receiverId : senderId;
           const otherUser   = senderId === user._id ? (msg.receiver?._id ? msg.receiver : null) : (msg.sender?._id ? msg.sender : null);
@@ -113,7 +141,6 @@ const MessagesPage = () => {
     if (!newMessage.trim() || !activeUser) return;
 
     try {
-      // Optimistic update handled by socket
       await messageService.sendMessage(activeUser._id, newMessage);
       setNewMessage('');
     } catch {
@@ -130,11 +157,14 @@ const MessagesPage = () => {
           <div className="p-4 border-b border-white/10 font-display font-bold text-xl flex items-center gap-2">
             <MessageSquare className="w-5 h-5 text-eco-500" /> Inbox
           </div>
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
+          
+          {/* Active Chats */}
+          <div className="flex-[3] overflow-y-auto border-b border-white/10 custom-scrollbar">
+            <div className="p-3 text-[10px] font-bold text-eco-500 uppercase tracking-wider bg-white/[0.01]">Recent Chats</div>
             {loadingConvos ? (
               <div className="p-8 text-center text-eco-700">Loading...</div>
             ) : conversations.length === 0 ? (
-              <div className="p-8 text-center text-eco-700">No conversations yet</div>
+              <div className="p-8 text-center text-eco-700 text-sm">No recent conversations</div>
             ) : (
               conversations.map(c => (
                 <button
@@ -143,7 +173,7 @@ const MessagesPage = () => {
                   className={`w-full text-left p-4 border-b border-white/5 hover:bg-white/5 transition-colors flex items-start gap-3 ${activeUser?._id === c.user._id ? 'bg-white/10' : ''}`}
                 >
                   <div className="w-10 h-10 rounded-full bg-eco-600/20 flex-shrink-0 flex items-center justify-center font-bold text-eco-400">
-                    {c.user.name?.[0]}
+                    {c.user.name?.[0] || 'U'}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-center mb-1">
@@ -161,6 +191,42 @@ const MessagesPage = () => {
                 </button>
               ))
             )}
+          </div>
+
+          {/* Trading Partners */}
+          <div className="flex-[2] overflow-y-auto flex flex-col bg-dark-500 custom-scrollbar">
+            <div className="p-3 text-[10px] font-bold text-eco-500 uppercase tracking-wider bg-white/[0.01] border-b border-white/5">
+              🤝 Trading Partners ({user?.role === 'buyer' ? 'Sellers' : 'Buyers'})
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {loadingPartners ? (
+                <div className="p-4 text-center text-eco-700 text-xs">Loading partners...</div>
+              ) : partners.length === 0 ? (
+                <div className="p-4 text-center text-eco-700 text-xs">No partners from transaction history</div>
+              ) : (
+                partners.map(p => {
+                  const isConvoExists = conversations.some(c => c.user._id === p._id);
+                  return (
+                    <button
+                      key={p._id}
+                      onClick={() => setActiveUser(p)}
+                      className={`w-full text-left p-3 border-b border-white/5 hover:bg-white/5 transition-colors flex items-center gap-3 ${activeUser?._id === p._id ? 'bg-white/10' : ''}`}
+                    >
+                      <div className="w-8 h-8 rounded-full bg-eco-600/20 flex-shrink-0 flex items-center justify-center font-bold text-eco-400 text-xs">
+                        {p.name?.[0] || 'U'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="font-semibold text-eco-100 text-sm truncate block">{p.companyName || p.name}</span>
+                        <span className="text-[10px] text-eco-700 block capitalize">{p.industryType || p.role}</span>
+                      </div>
+                      {!isConvoExists && (
+                        <span className="text-[9px] bg-eco-500/10 text-eco-400 px-2 py-0.5 rounded border border-eco-500/20 font-semibold shrink-0">New Chat</span>
+                      )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
           </div>
         </div>
 

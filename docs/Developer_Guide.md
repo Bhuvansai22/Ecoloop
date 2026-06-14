@@ -81,13 +81,13 @@ npm run dev
 - **Material**: Represents a waste listing. Contains details like category, quantity, price, images, and auction details.
 - **Bid**: Represents an offer made by a buyer on an auction material.
 - **Transaction**: Created when a bid is accepted or a direct purchase is finalized. Tracks status and carbon savings.
-- **Message**: Stores chat history between users.
+- **Message**: Stores chat history between users (strictly private between the sender and receiver).
 
 ### 3.2 Authentication & Authorization (RBAC)
 Authentication is handled via JWT. The token is stored in `localStorage` on the client and passed in the `Authorization: Bearer <token>` header.
 Role-Based Access Control is enforced using the `authorize('role')` middleware in Express.
-- **Sellers**: Can create/edit materials, accept bids, manage transactions.
-- **Buyers**: Can browse materials, place bids, request deals.
+- **Sellers**: Can create/edit materials, accept bids, manage transactions, and chat with buyers of their materials.
+- **Buyers**: Can browse materials, place bids, request deals, and chat with sellers from whom they purchased materials.
 
 ### 3.3 Real-Time Infrastructure (Socket.io)
 Socket.io is used for instant messaging and live bidding.

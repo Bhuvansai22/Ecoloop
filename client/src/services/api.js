@@ -24,13 +24,15 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Global 401 handling
+// Global 401 handling (Redirect to login if unauthorized and not already on the login page)
 api.interceptors.response.use(
   (res) => res,
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('ecoloop_token');
-      window.location.href = '/login';
+      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

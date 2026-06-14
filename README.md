@@ -82,6 +82,7 @@ EcoLoop/
         │   ├── MaterialFormPage.jsx
         │   ├── ProfilePage.jsx
         │   ├── CarbonDashboardPage.jsx
+        │   ├── MessagesPage.jsx
         │   └── AdminPage.jsx
         └── App.jsx
 ```

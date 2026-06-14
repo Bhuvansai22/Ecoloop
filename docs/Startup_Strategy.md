@@ -37,7 +37,7 @@ EcoLoop should employ a multi-tiered monetization strategy:
 
 1. **Transaction Fees (The Core):** Charge a small percentage (e.g., 2-5%) on the final accepted bid amount. The buyer pays this fee upon transaction completion.
 2. **Freemium Subscriptions for Sellers:**
-   - *Basic (Free):* Standard listings, basic chat.
+   - *Basic (Free):* Standard listings, direct chat with transacted partners.
    - *Pro ($XX/month):* Featured listings (appear higher in searches), advanced analytics on buyer trends, premium "Verified" badge.
 3. **ESG Reporting as a Service (B2B Enterprise):** Larger corporations need verifiable data for sustainability reports. Charge an annual fee for advanced API access to their historical carbon impact data and automated compliance reporting.
 
