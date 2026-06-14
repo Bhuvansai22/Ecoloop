@@ -105,8 +105,8 @@ const AdminPage = () => {
         {loading ? (
           <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="glass-card h-16 animate-pulse" />)}</div>
         ) : tab === 'users' ? (
-          <div className="glass-card overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="glass-card overflow-hidden overflow-x-auto">
+            <table className="w-full text-sm min-w-[600px]">
               <thead>
                 <tr className="border-b border-white/[0.06] text-eco-700 text-xs uppercase tracking-wider">
                   <th className="text-left p-4">User</th>

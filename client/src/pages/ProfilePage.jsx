@@ -99,7 +99,7 @@ const ProfilePage = () => {
           {/* Personal info */}
           <div className="glass-card p-6 space-y-4">
             <h2 className="font-display font-semibold text-eco-300">Personal & Company</h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-eco-300 mb-1.5">Full Name</label>
                 <input className="input-field" {...register('name', { required: true })} />
@@ -121,7 +121,7 @@ const ProfilePage = () => {
               <textarea className="input-field resize-none" rows={3} placeholder="About your company..."
                 {...register('bio')} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-eco-300 mb-1.5">Phone</label>
                 <input className="input-field" placeholder="+91..." {...register('phone')} />
@@ -136,7 +136,7 @@ const ProfilePage = () => {
           {/* Location */}
           <div className="glass-card p-6 space-y-4">
             <h2 className="font-display font-semibold text-eco-300">Location</h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-eco-300 mb-1.5">City</label>
                 <input className="input-field" placeholder="Hyderabad" {...register('city')} />
@@ -146,7 +146,7 @@ const ProfilePage = () => {
                 <input className="input-field" placeholder="Telangana" {...register('state')} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-eco-300 mb-1.5">Latitude</label>
                 <input type="number" step="any" className="input-field" {...register('lat')} />

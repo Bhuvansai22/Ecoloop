@@ -1,7 +1,7 @@
 /**
  * Navbar — sticky navigation with auth state
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Menu, X, Leaf, ChevronDown, LayoutDashboard, LogOut, User, MessageSquare } from 'lucide-react';
@@ -13,6 +13,7 @@ const Navbar = () => {
   const [scrolled,    setScrolled]    = useState(false);
   const [menuOpen,    setMenuOpen]    = useState(false);
   const [dropOpen,    setDropOpen]    = useState(false);
+  const dropRef = useRef(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -21,6 +22,17 @@ const Navbar = () => {
   }, []);
 
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropRef.current && !dropRef.current.contains(e.target)) {
+        setDropOpen(false);
+      }
+    };
+    if (dropOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [dropOpen]);
 
   const handleLogout = () => { logout(); navigate('/'); };
 
@@ -50,7 +62,7 @@ const Navbar = () => {
         {/* Desktop auth */}
         <div className="hidden md:flex items-center gap-3">
           {user ? (
-            <div className="relative">
+            <div className="relative" ref={dropRef}>
               <button
                 onClick={() => setDropOpen(!dropOpen)}
                 className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm hover:bg-white/10 transition-all"
