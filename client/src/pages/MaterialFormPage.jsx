@@ -70,7 +70,7 @@ const MaterialFormPage = () => {
       (error) => {
         toast.error('Could not get position: ' + error.message, { id: toastId });
       },
-      { enableHighAccuracy: true, timeout: 8000 }
+      { enableHighAccuracy: true, timeout: 30000, maximumAge: 60000 }
     );
   };
 

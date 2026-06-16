@@ -1,5 +1,5 @@
 /**
- * DashboardPage — Personalized B2B sustainability dashboard with gamification & carbon calculator
+ * DashboardPage — Personalized B2B sustainability dashboard with gamification
  */
 import { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -11,7 +11,7 @@ import {
   Package, Leaf, BarChart3, Plus, ShoppingBag,
   TrendingUp, Eye, CheckCircle2, Clock, BadgeCheck,
   MessageSquare, Sparkles, Building2, Star, Award,
-  Trees, Car, Plane, ChevronRight, Calculator, User
+  Trees, Car, Plane, ChevronRight, User
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -42,12 +42,6 @@ const DashboardPage = () => {
   // Seller Specific states
   const [myListings, setMyListings] = useState([]);
 
-  // Carbon Calculator inline states
-  const [energyBill, setEnergyBill] = useState(500);
-  const [vehicleDist, setVehicleDist] = useState(100);
-  const [recyclingRate, setRecyclingRate] = useState(25);
-  const [calculating, setCalculating] = useState(false);
-  const [calcResult, setCalcResult] = useState(null);
 
   const isSeller = user?.role === 'seller';
 
@@ -81,8 +75,10 @@ const DashboardPage = () => {
     }
   }, [user?.role, updateUser]);
 
+  // Fetch fresh data every time the dashboard mounts
   useEffect(() => {
     if (user) {
+      setLoading(true);
       loadDashboardData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -98,31 +94,7 @@ const DashboardPage = () => {
     }
   };
 
-  // Submit Interactive Carbon Calculator
-  const handleCalculateCarbon = async (e) => {
-    e.preventDefault();
-    setCalculating(true);
-    try {
-      const { data } = await userService.submitCarbonAssessment({
-        energyBill: Number(energyBill),
-        vehicleDist: Number(vehicleDist),
-        recyclingRate: Number(recyclingRate)
-      });
-      setCalcResult(data.calculatedFootprint);
-      updateUser({
-        ecoPoints: data.ecoPoints,
-        sustainabilityScore: data.sustainabilityScore,
-        badges: data.badges,
-        activities: data.activities
-      });
-      toast.success(data.message);
-    } catch (err) {
-      toast.error('Failed to calculate footprint');
-      console.error(err);
-    } finally {
-      setCalculating(false);
-    }
-  };
+
 
   // Extract active sellers for the buyer directory
   const getVerifiedSellers = () => {
@@ -178,14 +150,10 @@ const DashboardPage = () => {
             <Link to="/marketplace" className="btn-primary flex items-center gap-2 text-sm">
               <ShoppingBag className="w-4 h-4" /> Explore Marketplace
             </Link>
-            {isSeller ? (
+            {isSeller && (
               <Link to="/materials/new" className="bg-dark-400 hover:bg-dark-200 border border-dark-100/60 text-eco-100 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all flex items-center gap-2">
                 <Plus className="w-4 h-4 text-eco-500" /> List Material
               </Link>
-            ) : (
-              <a href="#calculator-section" className="bg-dark-400 hover:bg-dark-200 border border-dark-100/60 text-eco-100 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all flex items-center gap-2">
-                <Calculator className="w-4 h-4 text-eco-500" /> Calculate Carbon
-              </a>
             )}
           </div>
         </div>
@@ -248,10 +216,10 @@ const DashboardPage = () => {
                     <div className="text-xs font-bold">Setup Company</div>
                   </Link>
                 )}
-                <a href="#calculator-section" className="glass-card p-4 text-center hover:bg-eco-50/50 border hover:border-eco-500/30 transition-all duration-300 text-eco-100">
-                  <Calculator className="w-6 h-6 mx-auto text-eco-500 mb-2" />
-                  <div className="text-xs font-bold">CO₂ Footprint</div>
-                </a>
+                <Link to="/carbon" className="glass-card p-4 text-center hover:bg-eco-50/50 border hover:border-eco-500/30 transition-all duration-300 text-eco-100">
+                  <Leaf className="w-6 h-6 mx-auto text-eco-500 mb-2" />
+                  <div className="text-xs font-bold">Carbon Impact</div>
+                </Link>
                 <Link to="/profile" className="glass-card p-4 text-center hover:bg-eco-50/50 border hover:border-eco-500/30 transition-all duration-300 text-eco-100">
                   <User className="w-6 h-6 mx-auto text-eco-500 mb-2" />
                   <div className="text-xs font-bold">My Journey</div>
@@ -354,79 +322,7 @@ const DashboardPage = () => {
               </div>
             )}
 
-            {/* ── INTERACTIVE CARBON FOOTPRINT CALCULATOR ── */}
-            <div id="calculator-section" className="glass-card p-6 border-eco-500/20">
-              <h2 className="font-display font-bold text-xl mb-2 flex items-center gap-2 text-eco-200">
-                <Calculator className="w-5 h-5 text-eco-400" /> Interactive Carbon Calculator
-              </h2>
-              <p className="text-xs text-eco-700 mb-5">
-                Estimate your monthly carbon footprint and instantly earn **+20 EcoPoints** & **+5 Circular Score**!
-              </p>
 
-              <form onSubmit={handleCalculateCarbon} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                <div>
-                  <label className="block text-xs text-eco-300 mb-1">Monthly Energy Bill ($)</label>
-                  <input
-                    type="number"
-                    value={energyBill}
-                    onChange={(e) => setEnergyBill(e.target.value)}
-                    className="input-field py-2 text-sm"
-                    min="0"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-eco-300 mb-1">Monthly Vehicle Travel (km)</label>
-                  <input
-                    type="number"
-                    value={vehicleDist}
-                    onChange={(e) => setVehicleDist(e.target.value)}
-                    className="input-field py-2 text-sm"
-                    min="0"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-eco-300 mb-1">Recycling Rate (%)</label>
-                  <input
-                    type="number"
-                    value={recyclingRate}
-                    onChange={(e) => setRecyclingRate(e.target.value)}
-                    className="input-field py-2 text-sm"
-                    min="0"
-                    max="100"
-                    required
-                  />
-                </div>
-                <div className="md:col-span-3 mt-2">
-                  <button 
-                    type="submit" 
-                    disabled={calculating} 
-                    className="btn-primary w-full py-2.5 text-sm flex items-center justify-center gap-2"
-                  >
-                    {calculating ? (
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        <Calculator className="w-4 h-4" /> Calculate & Claim 20 EcoPoints
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-
-              {calcResult !== null && (
-                <div className="mt-4 p-4 rounded-xl bg-eco-500/10 border border-eco-500/20 text-center animate-fadeIn">
-                  <div className="text-xs text-eco-400 font-semibold uppercase tracking-wider">Your Footprint</div>
-                  <div className="font-display text-3xl font-extrabold text-eco-200 mt-1">
-                    {calcResult} kg CO₂ / mo
-                  </div>
-                  <p className="text-xs text-eco-700 mt-1">
-                    Nice job! Your assessment has been recorded and 20 EcoPoints were successfully added to your account!
-                  </p>
-                </div>
-              )}
-            </div>
 
           </div>
 

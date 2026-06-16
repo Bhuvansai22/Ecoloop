@@ -27,6 +27,14 @@ const createTransaction = async (req, res) => {
       return res.status(400).json({ message: 'You cannot buy your own listing' });
     }
 
+    // Requested quantity cannot exceed listing quantity
+    const reqQty = Number(quantity) || material.quantity.value;
+    if (reqQty > material.quantity.value) {
+      return res.status(400).json({
+        message: `Requested quantity (${reqQty} ${unit || material.quantity.unit}) cannot exceed listing quantity of ${material.quantity.value} ${material.quantity.unit}`
+      });
+    }
+
     // Calculate carbon savings
     const carbonSaved = calculateCarbonSaved(
       material.category,

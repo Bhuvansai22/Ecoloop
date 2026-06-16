@@ -13,6 +13,18 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { useSocket } from '../context/SocketContext';
 
+const convertToKg = (value, unit) => {
+  const val = Number(value) || 0;
+  switch (unit) {
+    case 'kg':           return val;
+    case 'tonnes':       return val * 1000;
+    case 'litres':       return val;
+    case 'units':        return val * 10;
+    case 'cubic metres': return val * 800;
+    default:             return val;
+  }
+};
+
 const MaterialDetailPage = () => {
   const { id }     = useParams();
   const { user }   = useAuth();
@@ -25,7 +37,8 @@ const MaterialDetailPage = () => {
   const [message,   setMessage]   = useState('');
   const [quantity,  setQuantity]  = useState('');
   const [requested, setRequested] = useState(false);
-  const [bidAmount, setBidAmount] = useState('');
+  const [bidPricePerKg, setBidPricePerKg] = useState('');
+  const [bidQuantity, setBidQuantity] = useState('');
   const [bids,      setBids]      = useState([]);
   const [bidLoading, setBidLoading] = useState(false);
   const socket = useSocket();
@@ -70,6 +83,11 @@ const MaterialDetailPage = () => {
 
   const handleRequest = async () => {
     if (!user) { toast.error('Please login to request'); navigate('/login'); return; }
+    const reqQty = Number(quantity) || material.quantity.value;
+    if (reqQty > material.quantity.value) {
+      toast.error(`Requested quantity (${reqQty} ${material.quantity.unit}) cannot exceed listing quantity of ${material.quantity.value} ${material.quantity.unit}`);
+      return;
+    }
     setTxLoading(true);
     try {
       await transactionService.create({
@@ -100,11 +118,30 @@ const MaterialDetailPage = () => {
 
   const handleBid = async () => {
     if (!user) { toast.error('Please login to bid'); navigate('/login'); return; }
+    if (!bidQuantity || isNaN(bidQuantity) || Number(bidQuantity) <= 0) {
+      toast.error('Please enter a valid bid quantity in kg');
+      return;
+    }
+    if (!bidPricePerKg || isNaN(bidPricePerKg) || Number(bidPricePerKg) <= 0) {
+      toast.error('Please enter a valid bid price per kg');
+      return;
+    }
+    if (Number(bidQuantity) > maxKg) {
+      toast.error(`Bid quantity cannot exceed listing quantity of ${maxKg} kg (${qty?.value} ${qty?.unit})`);
+      return;
+    }
+    const totalBid = Number(bidQuantity) * Number(bidPricePerKg);
+    const minBid = auctionDetails?.currentHighestBid || auctionDetails?.startingPrice || 0;
+    if (totalBid <= minBid) {
+      toast.error(`Total bid (₹${totalBid.toLocaleString()}) must be higher than ₹${minBid.toLocaleString()}`);
+      return;
+    }
     setBidLoading(true);
     try {
-      await materialService.placeBid(id, bidAmount);
+      await materialService.placeBid(id, totalBid, bidQuantity);
       toast.success('Bid placed successfully!');
-      setBidAmount('');
+      setBidPricePerKg('');
+      setBidQuantity('');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Bid failed');
     } finally {
@@ -137,6 +174,7 @@ const MaterialDetailPage = () => {
 
   const carbonSaved = Math.round((qty?.value || 0) * (carbonFactor || 200));
   const isAuctionActive = isAuction && new Date() < new Date(auctionDetails?.endTime);
+  const maxKg = qty ? convertToKg(qty.value || 0, qty.unit || 'tonnes') : 0;
 
   return (
     <div className="min-h-screen pt-20 pb-12 px-4">
@@ -289,8 +327,17 @@ const MaterialDetailPage = () => {
                   <input
                     type="number"
                     placeholder={`Qty (max ${qty?.value} ${qty?.unit})`}
+                    max={qty?.value}
                     value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (Number(val) > (qty?.value || 0)) {
+                        toast.error(`Quantity cannot exceed listing quantity of ${qty?.value} ${qty?.unit}`);
+                        setQuantity(qty?.value?.toString() || '');
+                      } else {
+                        setQuantity(val);
+                      }
+                    }}
                     className="input-field py-2 text-sm flex-1"
                   />
                 </div>
@@ -329,16 +376,44 @@ const MaterialDetailPage = () => {
                 
                 {/* Only Buyers can place bids */}
                 {canBuy && isAuctionActive && (
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      placeholder={`Higher than ₹${auctionDetails.currentHighestBid || auctionDetails.startingPrice}`}
-                      value={bidAmount}
-                      onChange={(e) => setBidAmount(e.target.value)}
-                      className="input-field py-2 text-sm flex-1"
-                    />
-                    <button onClick={handleBid} disabled={bidLoading} className="btn-primary px-4">
-                      {bidLoading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" /> : 'Bid'}
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="number"
+                        placeholder={`Quantity (max ${maxKg} kg)`}
+                        max={maxKg}
+                        value={bidQuantity}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (Number(val) > maxKg) {
+                            toast.error(`Quantity cannot exceed listing quantity of ${maxKg} kg`);
+                            setBidQuantity(maxKg.toString());
+                          } else {
+                            setBidQuantity(val);
+                          }
+                        }}
+                        className="input-field py-2 text-sm w-full"
+                      />
+                      <input
+                        type="number"
+                        placeholder="Bid per kg (₹)"
+                        value={bidPricePerKg}
+                        onChange={(e) => setBidPricePerKg(e.target.value)}
+                        className="input-field py-2 text-sm w-full"
+                      />
+                    </div>
+                    {bidPricePerKg && bidQuantity && Number(bidQuantity) > 0 && (
+                      <div className="text-xs text-eco-400 font-semibold p-2 bg-eco-500/5 border border-eco-500/10 rounded-lg space-y-1">
+                        <div>💰 Calculated Total Bid: ₹{(Number(bidQuantity) * Number(bidPricePerKg)).toLocaleString()}</div>
+                        {auctionDetails && (
+                          <div className="text-[10px] text-eco-700 font-normal">
+                            Must be higher than current highest bid: ₹{(auctionDetails.currentHighestBid || auctionDetails.startingPrice).toLocaleString()}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <button onClick={handleBid} disabled={bidLoading} className="btn-primary w-full py-2">
+                      {bidLoading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" /> : 'Place Bid'}
                     </button>
                   </div>
                 )}
@@ -352,10 +427,21 @@ const MaterialDetailPage = () => {
                         <div key={b._id} className="flex justify-between items-center text-sm p-2 bg-white/5 rounded-lg border border-white/5">
                           <div>
                             <span className="text-eco-300 font-medium block">{b.bidder?.name || 'Anonymous'}</span>
+                            {b.quantity ? (
+                              <span className="text-xs text-eco-700 block">
+                                Total: ₹{b.amount.toLocaleString()} for {b.quantity} kg
+                              </span>
+                            ) : (
+                              <span className="text-xs text-eco-700 block">
+                                Total: ₹{b.amount.toLocaleString()}
+                              </span>
+                            )}
                             <span className="text-[10px] text-eco-800">{b.createdAt ? new Date(b.createdAt).toLocaleDateString() : ''}</span>
                           </div>
                           <div className="flex items-center gap-3">
-                            <span className="font-bold text-eco-400">₹{b.amount.toLocaleString()}</span>
+                            <span className="font-bold text-eco-400">
+                              {b.quantity ? `₹${(b.amount / b.quantity).toFixed(2)} / kg` : `₹${b.amount.toLocaleString()}`}
+                            </span>
                             {isOwner && (
                               <button 
                                 onClick={() => handleAcceptBid(b._id)}

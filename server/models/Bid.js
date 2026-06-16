@@ -17,6 +17,10 @@ const bidSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    quantity: {
+      type: Number,
+      min: 0,
+    },
   },
   { timestamps: true }
 );

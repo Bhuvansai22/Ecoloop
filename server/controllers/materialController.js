@@ -8,7 +8,7 @@ const Bid         = require('../models/Bid');
 const Transaction = require('../models/Transaction');
 const User        = require('../models/User');
 const { cloudinary } = require('../middleware/upload');
-const { getCarbonFactor } = require('../utils/carbonCalc');
+const { getCarbonFactor, calculateCarbonSaved } = require('../utils/carbonCalc');
 const { buildGeoNearQuery } = require('../utils/geoUtils');
 const OpenAI = require('openai');
 
@@ -16,6 +16,18 @@ const OpenAI = require('openai');
 // Prevents the same visitor counting more than once per hour
 const viewCache = new Map();
 const VIEW_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+const convertToKg = (value, unit) => {
+  const val = Number(value) || 0;
+  switch (unit) {
+    case 'kg':           return val;
+    case 'tonnes':       return val * 1000;
+    case 'litres':       return val; // 1L ≈ 1kg
+    case 'units':        return val * 10;   // 1 unit ≈ 10kg
+    case 'cubic metres': return val * 800;  // 1 m³ ≈ 800kg
+    default:             return val;
+  }
+};
 
 /**
  * POST /api/materials
@@ -404,7 +416,7 @@ const getMyMaterials = async (req, res) => {
  */
 const placeBid = async (req, res) => {
   try {
-    const { amount } = req.body;
+    const { amount, quantity } = req.body;
     const material = await Material.findById(req.params.id);
 
     if (!material) return res.status(404).json({ message: 'Material not found' });
@@ -414,6 +426,16 @@ const placeBid = async (req, res) => {
     }
     if (material.seller.toString() === req.user._id.toString()) {
       return res.status(400).json({ message: 'You cannot bid on your own listing' });
+    }
+
+    const bidQty = Number(quantity);
+    if (bidQty) {
+      const maxKg = convertToKg(material.quantity?.value || 0, material.quantity?.unit || 'tonnes');
+      if (bidQty > maxKg) {
+        return res.status(400).json({
+          message: `Bid quantity (${bidQty} kg) cannot exceed listing quantity of ${maxKg} kg (${material.quantity?.value} ${material.quantity?.unit})`
+        });
+      }
     }
 
     const bidAmount = Number(amount);
@@ -426,6 +448,7 @@ const placeBid = async (req, res) => {
       material: material._id,
       bidder: req.user._id,
       amount: bidAmount,
+      quantity: quantity ? Number(quantity) : undefined,
     });
 
     // Update material
@@ -485,9 +508,9 @@ const acceptBid = async (req, res) => {
     }
 
     // Calculate CO2 saved
-    const carbonSaved = Math.round(
-      (material.quantity?.value || 0) * (material.carbonFactor || 200)
-    );
+    const carbonSaved = bid.quantity
+      ? calculateCarbonSaved(material.category, bid.quantity, 'kg')
+      : Math.round((material.quantity?.value || 0) * (material.carbonFactor || 200));
 
     // Create a completed Transaction for the winning bidder
     const winningTransaction = await Transaction.create({
@@ -496,7 +519,9 @@ const acceptBid = async (req, res) => {
       material:    material._id,
       status:      'completed',
       completedAt: new Date(),
-      quantity:    { value: material.quantity?.value || 0, unit: material.quantity?.unit || 'tonnes' },
+      quantity:    bid.quantity
+        ? { value: bid.quantity, unit: 'kg' }
+        : { value: material.quantity?.value || 0, unit: material.quantity?.unit || 'tonnes' },
       agreedPrice: bid.amount,
       carbonSaved,
       sellerNote:  'Deal closed via auction bid acceptance.',
@@ -514,7 +539,9 @@ const acceptBid = async (req, res) => {
           seller:     req.user._id,
           material:   material._id,
           status:     'rejected',
-          quantity:   { value: material.quantity?.value || 0, unit: material.quantity?.unit || 'tonnes' },
+          quantity:   otherBid.quantity
+            ? { value: otherBid.quantity, unit: 'kg' }
+            : { value: material.quantity?.value || 0, unit: material.quantity?.unit || 'tonnes' },
           agreedPrice: otherBid.amount,
           carbonSaved: 0,
           sellerNote: 'Another bid was accepted for this auction listing.',
