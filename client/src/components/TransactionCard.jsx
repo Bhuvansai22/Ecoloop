@@ -14,7 +14,7 @@ const STATUS_CONFIG = {
 };
 
 const TransactionCard = ({ transaction, onAction, currentUserId }) => {
-  const { material, buyer, seller, status, carbonSaved, quantity, createdAt, message } = transaction;
+  const { material, buyer, seller, status, carbonSaved, quantity, createdAt, message, agreedPrice } = transaction;
   const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
   const isSeller = seller?._id === currentUserId || seller === currentUserId;
   const navigate = useNavigate();
@@ -39,44 +39,53 @@ const TransactionCard = ({ transaction, onAction, currentUserId }) => {
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2 mb-1">
-            <h4 className="font-display font-semibold text-sm line-clamp-1">
+            <h4 className="font-display font-bold text-sm text-eco-100 line-clamp-1">
               {material?.title || 'Material'}
             </h4>
             <span className={`status-badge shrink-0 ${cfg.color}`}>{cfg.label}</span>
           </div>
 
-          <p className="text-xs text-eco-700 mb-1.5">
-            <User className="w-3 h-3 inline mr-1" />
+          <p className="text-xs text-eco-200 mb-1.5">
+            <User className="w-3 h-3 inline mr-1 text-eco-500" />
             {isSeller
               ? `Buyer: ${buyer?.companyName || buyer?.name}`
               : `Seller: ${seller?.companyName || seller?.name}`}
           </p>
 
-          <div className="flex items-center gap-3 text-xs text-eco-700">
+          <div className="flex items-center gap-3 text-xs text-eco-200">
             <span>{quantity?.value} {quantity?.unit}</span>
-            {carbonSaved > 0 && (
-              <span className="flex items-center gap-1 text-eco-500">
-                <Leaf className="w-3 h-3" /> {carbonSaved} kg CO₂
-              </span>
+            {agreedPrice > 0 && (
+              <>
+                <span>·</span>
+                <span className="font-semibold text-eco-400">Total: ₹{(quantity?.value * agreedPrice).toLocaleString()}</span>
+              </>
             )}
-            <span className="ml-auto text-eco-800">
+            {carbonSaved > 0 && (
+              <>
+                <span>·</span>
+                <span className="flex items-center gap-1 text-eco-500 font-semibold">
+                  <Leaf className="w-3 h-3" /> {carbonSaved} kg CO₂
+                </span>
+              </>
+            )}
+            <span className="ml-auto text-eco-300">
               {createdAt ? formatDistanceToNow(new Date(createdAt), { addSuffix: true }) : ''}
             </span>
           </div>
 
           {message && (
-            <p className="text-xs text-eco-700 mt-1.5 italic line-clamp-1">"{message}"</p>
+            <p className="text-xs text-eco-300 mt-1.5 italic line-clamp-1">"{message}"</p>
           )}
         </div>
       </div>
 
       {/* Action buttons */}
-      <div className="mt-3 pt-3 border-t border-white/[0.06] flex gap-2 flex-wrap">
+      <div className="mt-3 pt-3 border-t border-dark-100/30 flex gap-2 flex-wrap">
         {/* Message button — always visible for both parties */}
         {otherPartyId && (
           <button
             onClick={() => navigate(`/messages?user=${otherPartyId}`)}
-            className="flex items-center gap-1.5 text-xs bg-white/5 hover:bg-eco-500/10 text-eco-600 hover:text-eco-400 border border-white/10 hover:border-eco-500/30 px-3 py-1.5 rounded-lg transition-all"
+            className="flex items-center gap-1.5 text-xs bg-dark-400 hover:bg-dark-200 text-eco-500 border border-dark-100 px-3 py-1.5 rounded-lg transition-all"
           >
             <MessageSquare className="w-3.5 h-3.5" />
             Message {isSeller ? 'Buyer' : 'Seller'}

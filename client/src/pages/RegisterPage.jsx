@@ -1,7 +1,7 @@
 /**
  * RegisterPage — role selection + registration form
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useForm } from 'react-hook-form';
@@ -15,11 +15,17 @@ const INDUSTRY_TYPES = [
 ];
 
 const RegisterPage = () => {
-  const { register: registerUser } = useAuth();
+  const { user, loading: authLoading, register: registerUser } = useAuth();
   const navigate = useNavigate();
   const [role,    setRole]    = useState('buyer');
   const [showPw,  setShowPw]  = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, authLoading, navigate]);
 
   const { register, handleSubmit, formState: { errors }, watch } = useForm();
   const password = watch('password');

@@ -33,6 +33,24 @@ export const AuthProvider = ({ children }) => {
     fetchMe();
   }, [token]);
 
+  // Set up response interceptor to handle 401s dynamically in React state
+  useEffect(() => {
+    const interceptor = api.interceptors.response.use(
+      (res) => res,
+      (error) => {
+        if (error.response?.status === 401) {
+          localStorage.removeItem('ecoloop_token');
+          setToken(null);
+          setUser(null);
+        }
+        return Promise.reject(error);
+      }
+    );
+    return () => {
+      api.interceptors.response.eject(interceptor);
+    };
+  }, []);
+
   const login = useCallback(async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password });
     localStorage.setItem('ecoloop_token', data.token);

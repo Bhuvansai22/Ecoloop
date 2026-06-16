@@ -1,6 +1,27 @@
+# Dependencies
 node_modules/
+
+# Environment variables
 .env
+*.env.local
+
+# Build output
 dist/
+
+# OS files
 .DS_Store
+Thumbs.db
+
+# Logs
 *.log
-docs
+npm-debug.log*
+
+# Uploads (local dev storage)
+server/uploads/
+
+# Editor
+.vscode/
+.idea/
+
+# Docs (optional, uncomment to exclude)
+# docs/

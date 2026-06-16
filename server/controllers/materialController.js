@@ -6,9 +6,11 @@
 const Material    = require('../models/Material');
 const Bid         = require('../models/Bid');
 const Transaction = require('../models/Transaction');
+const User        = require('../models/User');
 const { cloudinary } = require('../middleware/upload');
 const { getCarbonFactor } = require('../utils/carbonCalc');
 const { buildGeoNearQuery } = require('../utils/geoUtils');
+const OpenAI = require('openai');
 
 // In-memory dedup cache: "materialId:ip" -> timestamp
 // Prevents the same visitor counting more than once per hour
@@ -29,10 +31,17 @@ const createMaterial = async (req, res) => {
     } = req.body;
 
     // Process uploaded images
-    const images = (req.files || []).map((file) => ({
-      url:      file.path,
-      publicId: file.filename,
-    }));
+    const images = (req.files || []).map((file) => {
+      let url = file.path;
+      if (!process.env.CLOUDINARY_CLOUD_NAME && file.filename) {
+        const host = req.get('host');
+        url = `${req.protocol}://${host}/uploads/${file.filename}`;
+      }
+      return {
+        url,
+        publicId: file.filename,
+      };
+    });
 
     const material = await Material.create({
       title,
@@ -47,7 +56,7 @@ const createMaterial = async (req, res) => {
         coordinates: [Number(lng) || 0, Number(lat) || 0],
         address, city, state,
       },
-      tags:         tags ? tags.split(',').map(t => t.trim()).filter(t => t !== '') : [],
+      tags:         tags ? (Array.isArray(tags) ? tags : tags.split(',').map(t => t.trim()).filter(t => t !== '')) : [],
       carbonFactor: getCarbonFactor(category),
       condition,
       availableFrom,
@@ -60,6 +69,34 @@ const createMaterial = async (req, res) => {
     });
 
     await material.populate('seller', 'name companyName verified');
+
+    // Award points & log activity for listing material
+    const sellerUser = await User.findById(req.user._id);
+    if (sellerUser) {
+      sellerUser.ecoPoints += 15;
+      sellerUser.sustainabilityScore = Math.min(100, sellerUser.sustainabilityScore + 3);
+      sellerUser.activities.push({
+        type: 'Listed Material',
+        description: `Listed new reusable material: ${material.title}`,
+        points: 15,
+      });
+
+      // Badge promotions
+      const currentBadges = sellerUser.badges || [];
+      if (sellerUser.ecoPoints >= 500 && !currentBadges.includes('Sustainability Champion')) {
+        sellerUser.badges.push('Sustainability Champion');
+      }
+      if (sellerUser.ecoPoints >= 200 && !currentBadges.includes('Green Advocate')) {
+        sellerUser.badges.push('Green Advocate');
+      }
+      await sellerUser.save();
+    }
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('materialCreated', material);
+    }
+
     res.status(201).json({ message: 'Material listed successfully', material });
   } catch (err) {
     console.error('Create material error:', err.message);
@@ -209,7 +246,8 @@ const updateMaterial = async (req, res) => {
     allowedFields.forEach((f) => {
       if (req.body[f] !== undefined) {
         if (f === 'tags') {
-          material.tags = req.body.tags.split(',').map((t) => t.trim()).filter((t) => t !== '');
+          const tagsVal = req.body.tags;
+          material.tags = Array.isArray(tagsVal) ? tagsVal : tagsVal.split(',').map((t) => t.trim()).filter((t) => t !== '');
         } else {
           material[f] = req.body[f];
         }
@@ -234,7 +272,17 @@ const updateMaterial = async (req, res) => {
 
     // Add new images if any
     if (req.files && req.files.length > 0) {
-      const newImages = req.files.map((f) => ({ url: f.path, publicId: f.filename }));
+      const newImages = req.files.map((file) => {
+        let url = file.path;
+        if (!process.env.CLOUDINARY_CLOUD_NAME && file.filename) {
+          const host = req.get('host');
+          url = `${req.protocol}://${host}/uploads/${file.filename}`;
+        }
+        return {
+          url,
+          publicId: file.filename,
+        };
+      });
       material.images.push(...newImages);
     }
 
@@ -263,10 +311,12 @@ const deleteMaterial = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to delete this listing' });
     }
 
-    // Delete images from Cloudinary
-    for (const img of material.images) {
-      if (img.publicId) {
-        await cloudinary.uploader.destroy(img.publicId).catch(() => {});
+    // Delete images from Cloudinary (only if configured)
+    if (process.env.CLOUDINARY_CLOUD_NAME) {
+      for (const img of material.images) {
+        if (img.publicId) {
+          await cloudinary.uploader.destroy(img.publicId).catch(() => {});
+        }
       }
     }
 
@@ -439,8 +489,8 @@ const acceptBid = async (req, res) => {
       (material.quantity?.value || 0) * (material.carbonFactor || 200)
     );
 
-    // Create a completed Transaction so dashboard stats update
-    await Transaction.create({
+    // Create a completed Transaction for the winning bidder
+    const winningTransaction = await Transaction.create({
       buyer:       bid.bidder._id,
       seller:      req.user._id,
       material:    material._id,
@@ -451,6 +501,72 @@ const acceptBid = async (req, res) => {
       carbonSaved,
       sellerNote:  'Deal closed via auction bid acceptance.',
     });
+
+    // Create rejected transactions for ALL other unique bidders
+    const allBids = await Bid.find({ material: material._id, _id: { $ne: bid._id } });
+    const rejectedBidders = new Set();
+    for (const otherBid of allBids) {
+      const bidderId = otherBid.bidder.toString();
+      if (!rejectedBidders.has(bidderId)) {
+        rejectedBidders.add(bidderId);
+        await Transaction.create({
+          buyer:      otherBid.bidder,
+          seller:     req.user._id,
+          material:   material._id,
+          status:     'rejected',
+          quantity:   { value: material.quantity?.value || 0, unit: material.quantity?.unit || 'tonnes' },
+          agreedPrice: otherBid.amount,
+          carbonSaved: 0,
+          sellerNote: 'Another bid was accepted for this auction listing.',
+        });
+      }
+    }
+
+    // Update seller profile
+    const sellerUser = await User.findById(req.user._id);
+    if (sellerUser) {
+      sellerUser.carbonStats.totalSaved += carbonSaved;
+      sellerUser.carbonStats.totalTransactions += 1;
+      sellerUser.ecoPoints += 100;
+      sellerUser.materialsReused += 1;
+      sellerUser.sustainabilityScore = Math.min(100, sellerUser.sustainabilityScore + 15);
+      sellerUser.activities.push({
+        type: 'Exchanged Material',
+        description: `Auction completed for ${material.title}`,
+        points: 100,
+      });
+      const currentBadges = sellerUser.badges || [];
+      if (sellerUser.ecoPoints >= 500 && !currentBadges.includes('Sustainability Champion')) {
+        sellerUser.badges.push('Sustainability Champion');
+      }
+      if (sellerUser.ecoPoints >= 200 && !currentBadges.includes('Green Advocate')) {
+        sellerUser.badges.push('Green Advocate');
+      }
+      await sellerUser.save();
+    }
+
+    // Update winning buyer profile
+    const buyerUser = await User.findById(bid.bidder._id);
+    if (buyerUser) {
+      buyerUser.carbonStats.totalSaved += carbonSaved;
+      buyerUser.carbonStats.totalTransactions += 1;
+      buyerUser.ecoPoints += 100;
+      buyerUser.materialsReused += 1;
+      buyerUser.sustainabilityScore = Math.min(100, buyerUser.sustainabilityScore + 15);
+      buyerUser.activities.push({
+        type: 'Exchanged Material',
+        description: `Won auction and acquired ${material.title}`,
+        points: 100,
+      });
+      const currentBadges = buyerUser.badges || [];
+      if (buyerUser.ecoPoints >= 500 && !currentBadges.includes('Sustainability Champion')) {
+        buyerUser.badges.push('Sustainability Champion');
+      }
+      if (buyerUser.ecoPoints >= 200 && !currentBadges.includes('Green Advocate')) {
+        buyerUser.badges.push('Green Advocate');
+      }
+      await buyerUser.save();
+    }
 
     // Mark material as sold and record winning bid
     material.status = 'sold';
@@ -476,8 +592,73 @@ const acceptBid = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/materials/analyze-image
+ * Analyze uploaded image using OpenAI Vision
+ */
+const analyzeImage = async (req, res) => {
+  try {
+    const { image } = req.body;
+    if (!image) {
+      return res.status(400).json({ message: 'No image provided' });
+    }
+
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+      baseURL: 'https://models.inference.ai.azure.com',
+    });
+
+    const prompt = `You are an expert waste material classifier. Analyze this image of waste/scrap material and provide a JSON response with the following fields: 
+- 'title' (a short, descriptive title)
+- 'description' (a brief description)
+- 'category' (choose EXACTLY one from: Metal Scrap, Plastics, Paper & Cardboard, Glass, Organic Waste, Textiles, Chemical Waste, Electronic Waste, Wood & Timber, Rubber, Concrete & Construction, Other)
+- 'condition' (choose EXACTLY one from: New, Used, Needs Repair, Scrap)
+- 'tags' (a comma-separated string of 3-5 relevant keywords)
+- 'unit' (choose EXACTLY one from: kg, tonnes, litres, units, cubic metres)
+- 'price' (estimated market price in INR (₹) per unit of the material based on typical Indian scrap/recycling rates. Return ONLY the number/integer)
+- 'priceExplanation' (a brief 1-sentence explanation of the estimated price, e.g. "Copper scrap typically trades at ₹600-750 per kg based on purity.").
+Output ONLY valid JSON.`;
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            { type: 'image_url', image_url: { url: image } },
+          ],
+        },
+      ],
+      response_format: { type: 'json_object' },
+    });
+
+    const content = response.choices[0].message.content;
+    const parsed = JSON.parse(content);
+    
+    // Normalize condition to match database enum ('new', 'good', 'fair', 'poor')
+    if (parsed.condition) {
+      const cond = parsed.condition.toLowerCase();
+      if (cond.includes('new')) {
+        parsed.condition = 'new';
+      } else if (cond.includes('repair') || cond.includes('fair')) {
+        parsed.condition = 'fair';
+      } else if (cond.includes('scrap') || cond.includes('poor')) {
+        parsed.condition = 'poor';
+      } else {
+        parsed.condition = 'good'; // fallback for 'used' / 'good'
+      }
+    }
+    
+    res.json(parsed);
+  } catch (err) {
+    console.error('AI Analysis Error:', err);
+    res.status(500).json({ message: 'Failed to analyze image' });
+  }
+};
+
 module.exports = {
   createMaterial, getMaterials, getMaterialById, recordView,
   updateMaterial, deleteMaterial, getMatches, getMyMaterials,
-  placeBid, getBids, acceptBid,
+  placeBid, getBids, acceptBid, analyzeImage,
 };

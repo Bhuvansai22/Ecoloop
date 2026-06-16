@@ -24,9 +24,55 @@ const MaterialFormPage = () => {
   const [previews, setPreviews] = useState([]);
   const [files,    setFiles]    = useState([]);
   const [existingImages, setExistingImages] = useState([]);
+  const [priceHint, setPriceHint] = useState('');
 
-  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm();
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm();
   const isAuction = watch('isAuction');
+  const unit = watch('unit') || 'kg';
+
+  const handleAutoFetchLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+
+    const toastId = toast.loading('Fetching coordinates...');
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setValue('lat', latitude.toFixed(6));
+        setValue('lng', longitude.toFixed(6));
+        
+        toast.loading('Reverse-geocoding address...', { id: toastId });
+        
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          const data = await res.json();
+          if (data && data.address) {
+            const addr = data.address;
+            const city = addr.city || addr.town || addr.village || addr.suburb || '';
+            const state = addr.state || '';
+            const road = addr.road || '';
+            const county = addr.county || '';
+            const addressText = road ? `${road}${county ? ', ' + county : ''}` : (data.display_name || '');
+
+            setValue('address', addressText);
+            setValue('city', city);
+            setValue('state', state);
+            toast.success('Location fetched successfully! 📍', { id: toastId });
+          } else {
+            toast.success('Coordinates fetched! (Could not reverse-geocode)', { id: toastId });
+          }
+        } catch {
+          toast.success('Coordinates fetched! (Reverse-geocode failed)', { id: toastId });
+        }
+      },
+      (error) => {
+        toast.error('Could not get position: ' + error.message, { id: toastId });
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
 
   // Load existing data on edit
   useEffect(() => {
@@ -65,6 +111,40 @@ const MaterialFormPage = () => {
   const removeFile = (i) => {
     setFiles((prev) => prev.filter((_, idx) => idx !== i));
     setPreviews((prev) => prev.filter((_, idx) => idx !== i));
+  };
+
+  const handleAutoFillAI = async () => {
+    if (files.length === 0) {
+      toast.error('Please select an image first.');
+      return;
+    }
+
+    const file = files[0];
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = async () => {
+      const base64Image = reader.result;
+      const toastId = toast.loading('Analyzing image with AI...');
+      try {
+        const { data } = await materialService.analyzeImage(base64Image);
+        
+        if (data.title) setValue('title', data.title);
+        if (data.description) setValue('description', data.description);
+        if (data.category) setValue('category', data.category);
+        if (data.condition) setValue('condition', data.condition);
+        if (data.tags) setValue('tags', data.tags);
+        if (data.price) setValue('price', data.price);
+        if (data.unit) setValue('unit', data.unit);
+        if (data.priceExplanation) setPriceHint(data.priceExplanation);
+
+        toast.success('Form auto-filled successfully! ✨', { id: toastId });
+      } catch {
+        toast.error('AI analysis failed. Please try again.', { id: toastId });
+      }
+    };
+    reader.onerror = () => {
+      toast.error('Failed to read image file.');
+    };
   };
 
   const onSubmit = async (data) => {
@@ -151,10 +231,15 @@ const MaterialFormPage = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-eco-300 mb-1.5">Price (₹) *</label>
+                <label className="block text-sm font-medium text-eco-300 mb-1.5">Price (₹ / {unit}) *</label>
                 <input type="number" className={`input-field ${errors.price ? 'border-red-500' : ''}`}
                   placeholder="0"
                   {...register('price', { required: true, min: 0 })} />
+                {priceHint && (
+                  <p className="text-xs text-eco-400 mt-1.5 font-medium">
+                    💡 AI Estimate: {priceHint}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-eco-300 mb-1.5">Condition</label>
@@ -210,9 +295,18 @@ const MaterialFormPage = () => {
 
           {/* Location */}
           <div className="glass-card p-6 space-y-4">
-            <h2 className="font-display font-semibold text-eco-300 flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-eco-500" /> Location
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="font-display font-semibold text-eco-300 flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-eco-500" /> Location
+              </h2>
+              <button
+                type="button"
+                onClick={handleAutoFetchLocation}
+                className="text-xs bg-eco-500/10 hover:bg-eco-500/20 text-eco-500 border border-eco-500/30 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 font-semibold cursor-pointer"
+              >
+                Auto-Fetch Location
+              </button>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-eco-300 mb-1.5">Latitude</label>
@@ -234,9 +328,20 @@ const MaterialFormPage = () => {
 
           {/* Images */}
           <div className="glass-card p-6">
-            <h2 className="font-display font-semibold text-eco-300 flex items-center gap-2 mb-4">
-              <Upload className="w-4 h-4 text-eco-500" /> Upload Images
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display font-semibold text-eco-300 flex items-center gap-2">
+                <Upload className="w-4 h-4 text-eco-500" /> Upload Images
+              </h2>
+              {files.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleAutoFillAI}
+                  className="text-xs bg-eco-400/20 hover:bg-eco-400/30 text-eco-400 border border-eco-400/30 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 font-semibold cursor-pointer"
+                >
+                  ✨ Auto-fill with AI
+                </button>
+              )}
+            </div>
             {/* Existing images on edit */}
             {existingImages.length > 0 && (
               <div className="flex gap-2 flex-wrap mb-3">

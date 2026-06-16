@@ -209,7 +209,7 @@ const MaterialDetailPage = () => {
                 ) : (
                   <>
                     <DollarSign className="w-4 h-4 text-eco-500 mx-auto mb-1" />
-                    <div className="font-display font-bold">₹{price?.amount?.toLocaleString()}</div>
+                    <div className="font-display font-bold">₹{price?.amount?.toLocaleString()} / {qty?.unit}</div>
                     <div className="text-xs text-eco-700">{price?.negotiable ? 'Negotiable' : 'Fixed'}</div>
                   </>
                 )}
@@ -294,6 +294,11 @@ const MaterialDetailPage = () => {
                     className="input-field py-2 text-sm flex-1"
                   />
                 </div>
+                {quantity && !isNaN(quantity) && (
+                  <div className="text-xs text-eco-400 font-semibold p-2 bg-eco-500/5 border border-eco-500/10 rounded-lg">
+                    💰 Total Price: {quantity} {qty?.unit} × ₹{price?.amount} = ₹{(Number(quantity) * (price?.amount || 0)).toLocaleString()}
+                  </div>
+                )}
                 <textarea
                   placeholder="Message to seller (optional)"
                   value={message}

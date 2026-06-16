@@ -125,24 +125,78 @@ const updateTransactionStatus = async (req, res) => {
     transaction.status = status;
     if (sellerNote) transaction.sellerNote = sellerNote;
 
+    // Automatically reject other pending requests when accepted/completed
+    if (status === 'accepted' || status === 'completed') {
+      await Transaction.updateMany(
+        {
+          _id: { $ne: transaction._id },
+          material: transaction.material,
+          status: 'pending'
+        },
+        {
+          $set: {
+            status: 'rejected',
+            sellerNote: 'This listing is no longer available as another offer was accepted.'
+          }
+        }
+      );
+    }
+
     // Mark material as sold when transaction completes
     if (status === 'completed') {
       transaction.completedAt = new Date();
-      await Material.findByIdAndUpdate(transaction.material, { status: 'sold' });
+      const material = await Material.findByIdAndUpdate(transaction.material, { status: 'sold' });
+      const matTitle = material ? material.title : 'Material';
 
-      // Update carbon stats on both user profiles
-      await User.findByIdAndUpdate(transaction.seller, {
-        $inc: {
-          'carbonStats.totalSaved':        transaction.carbonSaved,
-          'carbonStats.totalTransactions': 1,
-        },
-      });
-      await User.findByIdAndUpdate(transaction.buyer, {
-        $inc: {
-          'carbonStats.totalSaved':        transaction.carbonSaved,
-          'carbonStats.totalTransactions': 1,
-        },
-      });
+      // Update seller profile
+      const sellerUser = await User.findById(transaction.seller);
+      if (sellerUser) {
+        sellerUser.carbonStats.totalSaved += transaction.carbonSaved;
+        sellerUser.carbonStats.totalTransactions += 1;
+        sellerUser.ecoPoints += 100;
+        sellerUser.materialsReused += 1;
+        sellerUser.sustainabilityScore = Math.min(100, sellerUser.sustainabilityScore + 15);
+        sellerUser.activities.push({
+          type: 'Exchanged Material',
+          description: `Listed & completed trade of ${matTitle}`,
+          points: 100,
+        });
+
+        // Badge promotions
+        const currentBadges = sellerUser.badges || [];
+        if (sellerUser.ecoPoints >= 500 && !currentBadges.includes('Sustainability Champion')) {
+          sellerUser.badges.push('Sustainability Champion');
+        }
+        if (sellerUser.ecoPoints >= 200 && !currentBadges.includes('Green Advocate')) {
+          sellerUser.badges.push('Green Advocate');
+        }
+        await sellerUser.save();
+      }
+
+      // Update buyer profile
+      const buyerUser = await User.findById(transaction.buyer);
+      if (buyerUser) {
+        buyerUser.carbonStats.totalSaved += transaction.carbonSaved;
+        buyerUser.carbonStats.totalTransactions += 1;
+        buyerUser.ecoPoints += 100;
+        buyerUser.materialsReused += 1;
+        buyerUser.sustainabilityScore = Math.min(100, buyerUser.sustainabilityScore + 15);
+        buyerUser.activities.push({
+          type: 'Exchanged Material',
+          description: `Acquired & reused ${matTitle}`,
+          points: 100,
+        });
+
+        // Badge promotions
+        const currentBadges = buyerUser.badges || [];
+        if (buyerUser.ecoPoints >= 500 && !currentBadges.includes('Sustainability Champion')) {
+          buyerUser.badges.push('Sustainability Champion');
+        }
+        if (buyerUser.ecoPoints >= 200 && !currentBadges.includes('Green Advocate')) {
+          buyerUser.badges.push('Green Advocate');
+        }
+        await buyerUser.save();
+      }
     }
 
     await transaction.save();

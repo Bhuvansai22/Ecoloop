@@ -7,6 +7,7 @@ import { materialService } from '../services';
 import MaterialCard from '../components/MaterialCard';
 import { Search, Loader2, Package, ChevronLeft, ChevronRight } from 'lucide-react';
 import debounce from '../utils/debounce';
+import { useSocket } from '../context/SocketContext';
 
 const DEFAULT_FILTERS = {
   category: '', sort: '-createdAt', minPrice: '', maxPrice: '',
@@ -21,9 +22,10 @@ const MarketplacePage = () => {
   const [loading,   setLoading]    = useState(true);
   const [search,    setSearch]     = useState('');
   const [filters,   setFilters]    = useState(DEFAULT_FILTERS);
+  const socket = useSocket();
 
-  const fetchMaterials = useCallback(async (q, f, p) => {
-    setLoading(true);
+  const fetchMaterials = useCallback(async (q, f, p, silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const params = { page: p, limit: 12, ...f };
       if (q) params.search = q;
@@ -34,7 +36,7 @@ const MarketplacePage = () => {
     } catch {
       setMaterials([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -47,6 +49,27 @@ const MarketplacePage = () => {
   useEffect(() => {
     debouncedFetch(search, filters, page);
   }, [search, filters, page]);
+
+  // Handle live material listings
+  useEffect(() => {
+    if (socket) {
+      const handleNewMaterial = () => {
+        fetchMaterials(search, filters, page);
+      };
+      socket.on('materialCreated', handleNewMaterial);
+      return () => {
+        socket.off('materialCreated', handleNewMaterial);
+      };
+    }
+  }, [socket, fetchMaterials, search, filters, page]);
+
+  // Periodically refresh listings in the background every 10 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchMaterials(search, filters, page, true);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [fetchMaterials, search, filters, page]);
 
   const handleFilterChange = (newF) => {
     setFilters((prev) => ({ ...prev, ...newF }));

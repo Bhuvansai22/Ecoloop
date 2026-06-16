@@ -3,6 +3,7 @@ const router  = express.Router();
 const {
   getProfile, updateProfile, getDashboard,
   getCarbonDashboard, getAllUsers, toggleVerify,
+  submitCarbonAssessment,
 } = require('../controllers/userController');
 const { protect, authorize } = require('../middleware/auth');
 const { uploadAvatar } = require('../middleware/upload');
@@ -21,6 +22,9 @@ router.get('/dashboard', getDashboard);
 
 // GET  /api/users/carbon
 router.get('/carbon', getCarbonDashboard);
+
+// POST /api/users/carbon-assessment
+router.post('/carbon-assessment', submitCarbonAssessment);
 
 // Admin only routes
 // GET    /api/users

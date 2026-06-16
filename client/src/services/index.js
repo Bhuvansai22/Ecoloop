@@ -13,6 +13,7 @@ export const materialService = {
   getBids: (id) => api.get(`/materials/${id}/bids`),
   acceptBid: (id, bidId) => api.post(`/materials/${id}/accept-bid`, { bidId }),
   recordView: (id) => api.post(`/materials/${id}/view`),
+  analyzeImage: (image) => api.post('/materials/analyze-image', { image }),
 };
 
 /** Transaction service */
@@ -37,6 +38,7 @@ export const userService = {
   update: (formData) => api.put('/users/update', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   getDashboard: () => api.get('/users/dashboard'),
   getCarbon: () => api.get('/users/carbon'),
+  submitCarbonAssessment: (data) => api.post('/users/carbon-assessment', data),
   // Admin
   getAllUsers: (params) => api.get('/users', { params }),
   toggleVerify: (id) => api.patch(`/users/${id}/verify`),

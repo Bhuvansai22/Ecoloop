@@ -1,7 +1,7 @@
 /**
  * LoginPage
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useForm } from 'react-hook-form';
@@ -9,12 +9,18 @@ import toast from 'react-hot-toast';
 import { Leaf, Eye, EyeOff, LogIn } from 'lucide-react';
 
 const LoginPage = () => {
-  const { login }       = useAuth();
+  const { user, loading: authLoading, login } = useAuth();
   const navigate        = useNavigate();
   const location        = useLocation();
   const from            = location.state?.from?.pathname || '/dashboard';
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate(from, { replace: true });
+    }
+  }, [user, authLoading, navigate, from]);
 
   const { register, handleSubmit, formState: { errors } } = useForm();
 

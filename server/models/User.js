@@ -70,6 +70,40 @@ const userSchema = new mongoose.Schema(
     website: {
       type: String,
     },
+    // Gamification & Rewards
+    ecoPoints: {
+      type: Number,
+      default: 50, // Welcome bonus points
+    },
+    sustainabilityScore: {
+      type: Number,
+      default: 45, // Initial circular score (out of 100)
+    },
+    materialsReused: {
+      type: Number,
+      default: 0,
+    },
+    badges: {
+      type: [String],
+      default: ['Eco Beginner'],
+    },
+    activities: {
+      type: [
+        {
+          type: { type: String, required: true },
+          description: { type: String, required: true },
+          points: { type: Number, default: 0 },
+          createdAt: { type: Date, default: Date.now },
+        }
+      ],
+      default: [
+        {
+          type: 'Welcome Bonus',
+          description: 'Joined EcoLoop circular economy network',
+          points: 50,
+        }
+      ]
+    },
     // Aggregated carbon stats (updated on transaction completion)
     carbonStats: {
       totalSaved: { type: Number, default: 0 }, // kg CO2

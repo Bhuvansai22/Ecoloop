@@ -24,18 +24,5 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Global 401 handling (Redirect to login if unauthorized and not already on the login page)
-api.interceptors.response.use(
-  (res) => res,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('ecoloop_token');
-      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-        window.location.href = '/login';
-      }
-    }
-    return Promise.reject(error);
-  }
-);
 
 export default api;

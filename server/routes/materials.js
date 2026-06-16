@@ -3,7 +3,7 @@ const router  = express.Router();
 const {
   createMaterial, getMaterials, getMaterialById, recordView,
   updateMaterial, deleteMaterial, getMatches, getMyMaterials,
-  placeBid, getBids, acceptBid,
+  placeBid, getBids, acceptBid, analyzeImage,
 } = require('../controllers/materialController');
 const { protect, authorize } = require('../middleware/auth');
 const { uploadMaterial } = require('../middleware/upload');
@@ -15,6 +15,9 @@ router.post('/:id/view', recordView);
 
 // Authenticated routes
 router.use(protect);
+
+// POST /api/materials/analyze-image
+router.post('/analyze-image', authorize('seller', 'admin'), analyzeImage);
 
 // GET  /api/materials/matches  — must come before /:id
 router.get('/matches', getMatches);

@@ -8,30 +8,30 @@ export default {
     extend: {
       colors: {
         eco: {
-          50:  '#f0fdf4',
-          100: '#dcfce7',
-          200: '#bbf7d0',
-          300: '#86efac',
-          400: '#4ade80',
-          500: '#22c55e',
-          600: '#16a34a',
-          700: '#15803d',
-          800: '#166534',
-          900: '#14532d',
-          950: '#052e16',
+          50:  'rgba(var(--accent-green-light), <alpha-value>)',   // Light green tint (auto-darkens in dark mode)
+          100: 'rgba(var(--text-heading-secondary), <alpha-value>)',   // Secondary Headings
+          200: 'rgba(var(--text-body), <alpha-value>)',   // Body Text
+          300: 'rgba(var(--text-muted), <alpha-value>)',   // Muted Text
+          400: 'rgba(var(--accent-teal), <alpha-value>)',   // Accent Teal (bright in dark mode)
+          500: 'rgba(var(--accent-green), <alpha-value>)',   // Primary Green (vivid in dark mode)
+          600: 'rgba(var(--accent-green-hover), <alpha-value>)',   // Green Hover (vivid in dark mode)
+          700: 'rgba(var(--text-heading-primary), <alpha-value>)',   // Secondary Navy / Primary Headings
+          800: 'rgba(var(--text-muted), <alpha-value>)',   // Muted Text alternative
+          900: 'rgba(var(--text-heading-primary), <alpha-value>)',   // Heading navy
+          950: '#111827',
         },
         dark: {
-          50:  '#f9fafb',
-          100: '#1a1f1a',
-          200: '#141914',
-          300: '#0f130f',
-          400: '#0b0e0b',
-          500: '#080d08',
+          50:  'rgba(var(--bg-main), <alpha-value>)',   // Main Background
+          100: 'rgba(var(--border-color), <alpha-value>)',   // Border Color
+          200: 'rgba(var(--border-color), <alpha-value>)',   // Hover background
+          300: 'rgba(var(--bg-card), <alpha-value>)',   // Card / Navbar Background
+          400: 'rgba(var(--bg-input), <alpha-value>)',   // Surface Background
+          500: 'rgba(var(--bg-main), <alpha-value>)',   // Main Background
         },
       },
       fontFamily: {
         sans:    ['Inter', 'sans-serif'],
-        display: ['Space Grotesk', 'sans-serif'],
+        display: ['Inter', 'sans-serif'],
       },
       animation: {
         'fade-in':   'fadeIn 0.5s ease forwards',
