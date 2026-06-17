@@ -1,21 +1,18 @@
 /**
  * ForgotPasswordPage
- * Requests a password reset link by email (secure Brevo-based flow).
+ * Requests a password reset link by email.
  */
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
-import { Leaf, Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Leaf, Mail, ArrowLeft, CheckCircle2, Send } from 'lucide-react';
 import { authService } from '../services';
 
 const ForgotPasswordPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-
-  const [successMessage, setSuccessMessage] = useState('');
-  const [devLink, setDevLink] = useState('');
 
   const {
     register,
@@ -26,13 +23,11 @@ const ForgotPasswordPage = () => {
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      const res = await authService.forgotPassword(data.email);
-      setSuccessMessage(res.data?.message || 'If an account exists for that email, we have sent a link to reset your password. Please check your inbox and spam folder.');
-      setDevLink(res.data?.devLink || '');
+      await authService.forgotPassword(data.email);
       setSuccess(true);
-      toast.success('Reset link requested successfully!');
+      toast.success('Reset link sent!');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to request reset link');
+      toast.error(err.response?.data?.message || 'Failed to send reset link');
     } finally {
       setLoading(false);
     }
@@ -49,7 +44,7 @@ const ForgotPasswordPage = () => {
             Eco<span className="text-eco-400">Loop</span>
           </div>
           <h1 className="font-display text-2xl font-bold">Forgot Password</h1>
-          <p className="text-eco-700 text-sm mt-1">We will email you a link to secure your account</p>
+          <p className="text-eco-700 text-sm mt-1">We'll email you a link to reset your password</p>
         </div>
 
         <div className="glass-card p-8">
@@ -57,24 +52,17 @@ const ForgotPasswordPage = () => {
           {success ? (
             /* ── Success State ── */
             <div className="flex flex-col items-center gap-4 py-4 text-center">
-              <CheckCircle2 className="w-14 h-14 text-eco-400 animate-bounce" />
-              <h2 className="font-display text-xl font-semibold">Reset Requested</h2>
-              <p className="text-eco-300 text-sm leading-relaxed whitespace-pre-line">
-                {successMessage}
+              <div className="w-16 h-16 rounded-full bg-eco-500/10 flex items-center justify-center">
+                <CheckCircle2 className="w-10 h-10 text-eco-400" />
+              </div>
+              <h2 className="font-display text-xl font-semibold">Check Your Email</h2>
+              <p className="text-eco-700 text-sm leading-relaxed">
+                If an account exists for that email, a password reset link has been sent. 
+                Please check your inbox and spam folder.
               </p>
-
-              {devLink && (
-                <div className="w-full mt-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-center">
-                  <p className="text-xs text-amber-400 mb-1 font-medium">Development Fallback Link:</p>
-                  <a
-                    href={devLink}
-                    className="text-eco-400 hover:text-eco-300 font-mono text-xs break-all underline block hover:underline"
-                  >
-                    Click to Reset Password
-                  </a>
-                </div>
-              )}
-
+              <p className="text-eco-700/60 text-xs">
+                The link will expire in 10 minutes.
+              </p>
               <button
                 onClick={() => navigate('/login')}
                 className="btn-primary w-full mt-2"
@@ -113,7 +101,7 @@ const ForgotPasswordPage = () => {
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <><Mail className="w-4 h-4" /> Send Reset Link</>
+                  <><Send className="w-4 h-4" /> Send Reset Link</>
                 )}
               </button>
             </form>

@@ -153,10 +153,17 @@ const forgotPassword = async (req, res) => {
 
     await user.save({ validateBeforeSave: false });
 
-    // Send email
-    const origin = req.get('origin');
-    const clientUrl = origin || (process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',')[0] : 'http://localhost:5173');
-    const resetUrl = `${clientUrl}/reset-password/${resetToken}`;
+    // Build the reset URL — use production CLIENT_URL in production, origin in dev
+    let clientUrl;
+    if (process.env.NODE_ENV === 'production') {
+      // In production, always use the configured production URL
+      const urls = (process.env.CLIENT_URL || '').split(',');
+      clientUrl = urls.find(u => !u.includes('localhost')) || urls[0] || 'http://localhost:5173';
+    } else {
+      // In development, use the request origin (so it matches the browser)
+      clientUrl = req.get('origin') || (process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',')[0] : 'http://localhost:5173');
+    }
+    const resetUrl = `${clientUrl.trim()}/reset-password/${resetToken}`;
 
     const html = `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid rgba(255,255,255,0.08); background-color: #0f130f; color: #e8f5e9; border-radius: 12px;">
@@ -188,20 +195,8 @@ const forgotPassword = async (req, res) => {
         message: 'If an account exists for that email, a password reset link has been sent.',
       });
     } catch (emailErr) {
-      console.log('\n==================================================');
-      console.log('⚠️  [EMAIL SEND FAILURE - DEVELOPMENT LINK FALLBACK]');
-      console.log(`To:      ${user.email}`);
-      console.log(`Reset URL: ${resetUrl}`);
-      console.log(`Error:   ${emailErr.message}`);
-      console.log('==================================================\n');
-
-      if (process.env.NODE_ENV === 'development') {
-        return res.status(200).json({
-          message: `Email delivery failed (${emailErr.message}), but a development fallback link is available below.`,
-          devLink: resetUrl,
-        });
-      }
-      return res.status(500).json({ message: 'Error sending password reset email.' });
+      console.error('Email send error:', emailErr.message);
+      return res.status(500).json({ message: 'Error sending password reset email. Please try again later.' });
     }
   } catch (err) {
     console.error('Forgot password error:', err.message);
