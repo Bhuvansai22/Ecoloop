@@ -1,8 +1,10 @@
 /**
  * sendEmail.js
- * Sends transactional email using Brevo (formerly Sendinblue) HTTP API.
+ * Sends transactional email using Brevo SMTP via nodemailer.
  * Falls back to console logging in development if BREVO_API_KEY is not configured.
  */
+
+const nodemailer = require('nodemailer');
 
 const sendEmail = async ({ to, subject, html, text }) => {
   const apiKey = process.env.BREVO_API_KEY;
@@ -21,36 +23,26 @@ const sendEmail = async ({ to, subject, html, text }) => {
   }
 
   try {
-    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: {
-        'accept': 'application/json',
-        'api-key': apiKey,
-        'content-type': 'application/json',
+    // Create a nodemailer transporter using Brevo SMTP
+    const transporter = nodemailer.createTransport({
+      host: 'smtp-relay.brevo.com',
+      port: 587,
+      secure: false,
+      auth: {
+        user: fromEmail,
+        pass: apiKey,
       },
-      body: JSON.stringify({
-        sender: {
-          name: fromName,
-          email: fromEmail,
-        },
-        to: [
-          {
-            email: to,
-          },
-        ],
-        subject: subject,
-        htmlContent: html,
-        textContent: text,
-      }),
     });
 
-    const data = await response.json();
+    const info = await transporter.sendMail({
+      from: `"${fromName}" <${fromEmail}>`,
+      to,
+      subject,
+      html,
+      text,
+    });
 
-    if (!response.ok) {
-      throw new Error(data.message || 'Error sending email via Brevo');
-    }
-
-    return { success: true, messageId: data.messageId };
+    return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error('❌ Error sending email:', error.message);
     throw error;
