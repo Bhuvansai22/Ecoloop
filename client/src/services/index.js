@@ -43,3 +43,11 @@ export const userService = {
   getAllUsers: (params) => api.get('/users', { params }),
   toggleVerify: (id) => api.patch(`/users/${id}/verify`),
 };
+
+/** Auth service */
+export const authService = {
+  forgotPassword: (email) =>
+    api.post('/auth/forgot-password', { email }),
+  resetPassword: (token, newPassword, confirmPassword) =>
+    api.post(`/auth/reset-password/${token}`, { newPassword, confirmPassword }),
+};

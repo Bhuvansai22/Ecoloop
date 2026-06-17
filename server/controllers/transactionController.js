@@ -59,6 +59,15 @@ const createTransaction = async (req, res) => {
       { path: 'buyer',    select: 'name companyName email' },
     ]);
 
+    // Notify seller in real-time that a new deal request arrived
+    const io = req.app.get('io');
+    if (io) {
+      io.to(transaction.seller.toString()).emit('transactionUpdated', {
+        type: 'new_request',
+        transaction,
+      });
+    }
+
     res.status(201).json({ message: 'Deal request sent!', transaction });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -213,6 +222,14 @@ const updateTransactionStatus = async (req, res) => {
       { path: 'buyer',    select: 'name companyName' },
       { path: 'seller',   select: 'name companyName' },
     ]);
+
+    // Notify both buyer and seller in their personal rooms
+    const io = req.app.get('io');
+    if (io) {
+      const payload = { type: 'status_change', status, transaction };
+      io.to(transaction.buyer._id.toString()).emit('transactionUpdated', payload);
+      io.to(transaction.seller._id.toString()).emit('transactionUpdated', payload);
+    }
 
     res.json({ message: `Transaction ${status}`, transaction });
   } catch (err) {

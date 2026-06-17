@@ -1,7 +1,7 @@
 /**
  * MaterialDetailPage — full listing view with transaction request
  */
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { materialService, transactionService } from '../services';
 import { useAuth } from '../context/AuthContext';
@@ -42,12 +42,9 @@ const MaterialDetailPage = () => {
   const [bids,      setBids]      = useState([]);
   const [bidLoading, setBidLoading] = useState(false);
   const socket = useSocket();
-  // Guard against React StrictMode double-invocation causing views to count twice
-  const fetchedRef = useRef(false);
 
   useEffect(() => {
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
+    setLoading(true);
     materialService.getById(id)
       .then(({ data }) => { 
         setMaterial(data.material); 
@@ -64,16 +61,17 @@ const MaterialDetailPage = () => {
   useEffect(() => {
     if (socket && material?.isAuction) {
       socket.emit('joinMaterial', id);
-      socket.on('newBid', (newBid) => {
+      const handleNewBid = (newBid) => {
         setBids(prev => [newBid, ...prev]);
         setMaterial(prev => ({
           ...prev,
           auctionDetails: { ...prev.auctionDetails, currentHighestBid: newBid.amount }
         }));
-      });
+      };
+      socket.on('newBid', handleNewBid);
       return () => {
         socket.emit('leaveMaterial', id);
-        socket.off('newBid');
+        socket.off('newBid', handleNewBid);
       };
     }
   }, [socket, material?.isAuction, id]);

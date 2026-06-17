@@ -4,6 +4,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
 import { userService, transactionService, materialService } from '../services';
 import TransactionCard from '../components/TransactionCard';
 import MaterialCard from '../components/MaterialCard';
@@ -30,6 +31,7 @@ const StatCard = ({ icon, label, value, sub, color = 'eco' }) => (
 
 const DashboardPage = () => {
   const { user, updateUser } = useAuth();
+  const socket = useSocket();
   const navigate = useNavigate();
   
   const [stats, setStats] = useState(null);
@@ -75,14 +77,30 @@ const DashboardPage = () => {
     }
   }, [user?.role, updateUser]);
 
-  // Fetch fresh data every time the dashboard mounts
+  // Fetch fresh data every time the dashboard mounts or user/role changes
   useEffect(() => {
     if (user) {
       setLoading(true);
       loadDashboardData();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadDashboardData]);
+
+  // Real-time updates via socket: refresh dashboard when a transaction changes
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleTransactionUpdate = () => {
+      loadDashboardData();
+    };
+
+    socket.on('transactionUpdated', handleTransactionUpdate);
+    socket.on('bidAccepted', handleTransactionUpdate);
+
+    return () => {
+      socket.off('transactionUpdated', handleTransactionUpdate);
+      socket.off('bidAccepted', handleTransactionUpdate);
+    };
+  }, [socket, loadDashboardData]);
 
   const handleTransactionAction = async (id, status) => {
     try {

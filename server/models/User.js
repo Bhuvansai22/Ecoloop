@@ -109,6 +109,15 @@ const userSchema = new mongoose.Schema(
       totalSaved: { type: Number, default: 0 }, // kg CO2
       totalTransactions: { type: Number, default: 0 },
     },
+    // Secure Password Reset fields
+    passwordResetToken: {
+      type: String,
+      select: false,
+    },
+    passwordResetExpires: {
+      type: Date,
+      select: false,
+    },
   },
   { timestamps: true }
 );

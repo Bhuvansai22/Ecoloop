@@ -3,6 +3,7 @@
  */
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
 import { transactionService } from '../services';
 import TransactionCard from '../components/TransactionCard';
 import { BarChart3, Filter, RefreshCw, Trophy, Clock, CheckCircle2, XCircle } from 'lucide-react';
@@ -18,6 +19,7 @@ const TABS = [
 
 const TransactionsPage = () => {
   const { user } = useAuth();
+  const socket = useSocket();
   const [transactions, setTransactions] = useState([]);
   const [total, setTotal] = useState(0);
   const [activeTab, setActiveTab] = useState('');
@@ -61,6 +63,18 @@ const TransactionsPage = () => {
       toast.error('Action failed');
     }
   };
+
+  // Real-time socket updates
+  useEffect(() => {
+    if (!socket) return;
+    const refresh = () => fetchTransactions(activeTab, page);
+    socket.on('transactionUpdated', refresh);
+    socket.on('bidAccepted', refresh);
+    return () => {
+      socket.off('transactionUpdated', refresh);
+      socket.off('bidAccepted', refresh);
+    };
+  }, [socket, fetchTransactions, activeTab, page]);
 
   const pages = Math.ceil(total / LIMIT);
 

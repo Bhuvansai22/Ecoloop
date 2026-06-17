@@ -10,8 +10,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@headlessui/react": "^2.2.9",
-    "@react-google-maps/api": "^2.20.8",
     "axios": "^1.14.0",
     "date-fns": "^4.1.0",
     "html2canvas": "^1.4.1",
