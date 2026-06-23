@@ -20,6 +20,9 @@ const BottomNav = () => {
   const { user } = useAuth();
   const location = useLocation();
 
+  // Don't show if not logged in
+  if (!user) return null;
+
   // Don't show on auth pages
   const hiddenPaths = ['/login', '/register', '/forgot-password'];
   if (hiddenPaths.some(p => location.pathname.startsWith(p))) return null;

@@ -3,7 +3,7 @@
  */
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { AuthProvider } from './context/AuthContext';
+import { useAuth, AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 
 import Navbar       from './components/Navbar';
@@ -28,6 +28,7 @@ import TransactionsPage    from './pages/TransactionsPage';
 
 /** Inner layout that has access to useLocation */
 const AppLayout = () => {
+  const { user } = useAuth();
   const location = useLocation();
   const authPaths = ['/login', '/register', '/forgot-password'];
   const isAuthPage = authPaths.some(p => location.pathname.startsWith(p)) || location.pathname.startsWith('/reset-password');
@@ -39,7 +40,7 @@ const AppLayout = () => {
     <div className="min-h-screen bg-mesh flex flex-col font-sans">
       <Navbar />
       {/* Main content — add bottom padding on mobile for bottom nav */}
-      <div className={`flex-grow ${!isAuthPage ? 'pb-safe-bottom md:pb-0' : ''}`}>
+      <div className={`flex-grow ${user && !isAuthPage ? 'pb-safe-bottom md:pb-0' : ''}`}>
         <Routes>
           {/* Public */}
           <Route path="/"          element={<HomePage />} />
