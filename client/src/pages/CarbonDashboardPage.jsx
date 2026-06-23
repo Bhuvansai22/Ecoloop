@@ -44,11 +44,11 @@ const CarbonDashboardPage = () => {
   const eq    = equivalents(total);
 
   return (
-    <div className="min-h-screen pt-20 pb-12 px-4">
+    <div className="min-h-screen pt-20 pb-12 px-3 md:px-4">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="font-display text-3xl font-bold flex items-center gap-3">
+            <h1 className="font-display text-2xl md:text-3xl font-bold flex items-center gap-2 md:gap-3">
               <Leaf className="text-eco-500 w-8 h-8" /> Carbon Impact Dashboard
             </h1>
             <p className="text-eco-700 mt-1">Your personal environmental contribution through EcoLoop.</p>
@@ -97,7 +97,7 @@ const CarbonDashboardPage = () => {
             <div className="glass-card p-8 mb-6 text-center border-eco-500/20 relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-eco-500/5 to-transparent" />
               <div className="relative">
-                <div className="font-display text-6xl font-extrabold gradient-text mb-2">
+                <div className="font-display text-4xl md:text-6xl font-extrabold gradient-text mb-2">
                   {total.toLocaleString()} kg
                 </div>
                 <div className="text-eco-700 text-lg">Total CO₂ Saved</div>

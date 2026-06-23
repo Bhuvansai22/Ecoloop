@@ -158,7 +158,7 @@ const MessagesPage = () => {
 
   return (
     <div className="min-h-screen pt-16 md:pt-20 pb-0 md:pb-12 px-0 md:px-4 flex justify-center">
-      <div className="max-w-6xl w-full flex flex-col md:flex-row h-[calc(100vh-4rem)] md:h-[80vh] glass-card overflow-hidden">
+      <div className="max-w-6xl w-full flex flex-col md:flex-row h-[calc(100vh-4rem-4.5rem)] md:h-[80vh] glass-card overflow-hidden">
         
         {/* Sidebar — full width on mobile when showChat=false */}
         <div className={`${showChat ? 'hidden md:flex' : 'flex'} md:flex flex-col w-full md:w-1/3 border-b md:border-b-0 md:border-r border-white/10 bg-dark-400 h-full`}>

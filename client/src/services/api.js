@@ -12,6 +12,7 @@ if (baseURL && !baseURL.endsWith('/api') && !baseURL.endsWith('/api/')) {
 const api = axios.create({
   baseURL,
   withCredentials: false,
+  timeout: 15000, // 15s — prevents indefinite hang on cold-start
 });
 
 // Attach JWT token to every request

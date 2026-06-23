@@ -1,13 +1,43 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>client</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/Ecoloop-icon.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ecoloop</title>
+</head>
+
+<body>
+  <div id="root">
+    <!-- Shown while React loads — replaced on mount -->
+    <div id="initial-loader"
+      style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f8faf9;">
+      <div
+        style="width:40px;height:40px;border:3px solid rgba(46,125,50,0.1);border-top-color:#2e7d32;border-radius:50%;animation:spin .8s linear infinite;">
+      </div>
+    </div>
+    <script>
+      (function () {
+        const theme = localStorage.getItem('theme') || 'light';
+        const loader = document.getElementById('initial-loader');
+        if (theme === 'dark') {
+          document.documentElement.classList.add('dark');
+          if (loader) loader.style.background = '#060a07';
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      })();
+    </script>
+    <style>
+      @keyframes spin {
+        to {
+          transform: rotate(360deg)
+        }
+      }
+    </style>
+  </div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
 </html>

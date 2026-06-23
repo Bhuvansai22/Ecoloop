@@ -98,20 +98,20 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ── Connect to MongoDB & Start ────────────────
+// ── Start Server & Connect to MongoDB ──────────
 const PORT = process.env.PORT || 5000;
+
+server.listen(PORT, () => {
+  console.log(`🚀  Server running on http://localhost:${PORT}`);
+});
 
 mongoose
   .connect(process.env.MONGODB_URI, { dbName: 'ecoloop' })
   .then(() => {
     console.log('✅  MongoDB connected');
-    server.listen(PORT, () => {
-      console.log(`🚀  Server running on http://localhost:${PORT}`);
-    });
   })
   .catch((err) => {
     console.error('❌  MongoDB connection error:', err.message);
-    process.exit(1);
   });
 
 module.exports = app;

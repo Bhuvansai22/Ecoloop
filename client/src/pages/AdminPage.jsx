@@ -6,6 +6,7 @@ import { userService, materialService } from '../services';
 import toast from 'react-hot-toast';
 import { BadgeCheck, Package, Users, ShieldCheck, Trash2, Search } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { confirmToast } from '../components/ConfirmToast';
 
 const AdminPage = () => {
   const [tab,      setTab]      = useState('users');
@@ -50,7 +51,11 @@ const AdminPage = () => {
   };
 
   const handleDeleteMaterial = async (id) => {
-    if (!window.confirm('Delete this listing?')) return;
+    const confirmed = await confirmToast('Delete this listing permanently?', {
+      confirmText: 'Yes, delete',
+      icon: '🗑️',
+    });
+    if (!confirmed) return;
     try {
       await materialService.delete(id);
       setMaterials((prev) => prev.filter((m) => m._id !== id));
@@ -59,7 +64,7 @@ const AdminPage = () => {
   };
 
   return (
-    <div className="min-h-screen pt-20 pb-12 px-4">
+    <div className="min-h-screen pt-20 pb-12 px-3 md:px-4">
       <div className="max-w-6xl mx-auto">
         <h1 className="font-display text-3xl font-bold mb-2">🛡️ Admin Panel</h1>
         <p className="text-eco-700 mb-8">Manage users, listings, and platform verification.</p>

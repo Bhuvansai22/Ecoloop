@@ -52,7 +52,7 @@ const TransactionCard = ({ transaction, onAction, currentUserId }) => {
               : `Seller: ${seller?.companyName || seller?.name}`}
           </p>
 
-          <div className="flex items-center gap-3 text-xs text-eco-200">
+          <div className="flex flex-wrap items-center gap-x-2 sm:gap-x-3 gap-y-1 text-xs text-eco-200">
             <span>{quantity?.value} {quantity?.unit}</span>
             {agreedPrice > 0 && (
               <>
@@ -68,7 +68,7 @@ const TransactionCard = ({ transaction, onAction, currentUserId }) => {
                 </span>
               </>
             )}
-            <span className="ml-auto text-eco-300">
+            <span className="text-eco-300 md:ml-auto w-full md:w-auto mt-0.5 md:mt-0 block md:inline text-[10px] sm:text-xs">
               {createdAt ? formatDistanceToNow(new Date(createdAt), { addSuffix: true }) : ''}
             </span>
           </div>

@@ -108,7 +108,7 @@ const FilterSidebar = ({ filters, onChange, onReset }) => {
         />
       </div>
 
-      <button onClick={onReset} className="btn-ghost w-full text-sm py-2">
+      <button onClick={onReset} className="btn-ghost w-full text-sm py-2 hidden md:block">
         Reset Filters
       </button>
     </div>
@@ -125,13 +125,34 @@ const FilterSidebar = ({ filters, onChange, onReset }) => {
       </button>
       {/* Mobile overlay */}
       {open && (
-        <div className="md:hidden fixed inset-0 z-40 bg-dark-500/95 p-6 overflow-y-auto">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-display font-semibold text-lg">Filters</h3>
-            <button onClick={() => setOpen(false)}><X className="w-5 h-5" /></button>
+        <>
+          <div className="bottom-sheet-backdrop md:hidden" onClick={() => setOpen(false)} />
+          <div className="bottom-sheet md:hidden p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-display font-semibold text-lg">Filters</h3>
+              <button onClick={() => setOpen(false)} className="p-1 rounded-lg hover:bg-dark-200 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="pb-4">
+              {panel}
+            </div>
+            <div className="mt-4 pt-4 border-t border-dark-100 flex gap-3">
+              <button
+                onClick={() => { onReset(); setOpen(false); }}
+                className="btn-ghost flex-1 text-sm py-2.5"
+              >
+                Reset All
+              </button>
+              <button
+                onClick={() => setOpen(false)}
+                className="btn-primary flex-1 text-sm py-2.5"
+              >
+                Apply Filters
+              </button>
+            </div>
           </div>
-          {panel}
-        </div>
+        </>
       )}
       {/* Desktop sidebar */}
       <aside className="hidden md:block w-72 shrink-0">

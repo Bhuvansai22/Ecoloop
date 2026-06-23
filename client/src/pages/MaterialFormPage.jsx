@@ -170,7 +170,7 @@ const MaterialFormPage = () => {
   };
 
   return (
-    <div className="min-h-screen pt-20 pb-12 px-4">
+    <div className="min-h-screen pt-20 pb-12 px-3 md:px-4">
       <div className="max-w-2xl mx-auto">
         <div className="mb-8">
           <h1 className="font-display text-3xl font-bold">
@@ -214,7 +214,7 @@ const MaterialFormPage = () => {
               {errors.description && <p className="text-red-400 text-xs mt-1">{errors.description.message}</p>}
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-eco-300 mb-1.5">Quantity *</label>
                 <input type="number" step="0.01" className={`input-field ${errors.quantity ? 'border-red-500' : ''}`}
@@ -229,7 +229,7 @@ const MaterialFormPage = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-eco-300 mb-1.5">Price (₹ / {unit}) *</label>
                 <input type="number" className={`input-field ${errors.price ? 'border-red-500' : ''}`}
@@ -307,7 +307,7 @@ const MaterialFormPage = () => {
                 Auto-Fetch Location
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-eco-300 mb-1.5">Latitude</label>
                 <input type="number" step="any" className="input-field" placeholder="e.g. 17.385"

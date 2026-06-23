@@ -42,6 +42,8 @@ export default {
       keyframes: {
         fadeIn:    { from: { opacity: 0 }, to: { opacity: 1 } },
         fadeUp:    { from: { opacity: 0, transform: 'translateY(20px)' }, to: { opacity: 1, transform: 'none' } },
+        slideUp:   { from: { transform: 'translateY(100%)' }, to: { transform: 'translateY(0)' } },
+        slideDown: { from: { transform: 'translateY(0)' }, to: { transform: 'translateY(100%)' } },
         pulseGlow: {
           '0%, 100%': { boxShadow: '0 0 0 0 rgba(34,197,94,0.4)' },
           '50%':      { boxShadow: '0 0 0 8px rgba(34,197,94,0)' },

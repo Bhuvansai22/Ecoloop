@@ -44,7 +44,7 @@ const RegisterPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 pt-20 pb-10 bg-mesh">
+    <div className="min-h-screen flex items-center justify-center px-3 md:px-4 pt-20 pb-10 bg-mesh">
       <div className="w-full max-w-lg">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -56,7 +56,7 @@ const RegisterPage = () => {
           <p className="text-eco-700 text-sm mt-1">Join the circular economy revolution</p>
         </div>
 
-        <div className="glass-card p-8">
+        <div className="glass-card p-5 md:p-8">
           {/* Role selection */}
           <div className="grid grid-cols-2 gap-3 mb-6">
             <button

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useSocket } from '../context/SocketContext';
+import { confirmToast } from '../components/ConfirmToast';
 
 const convertToKg = (value, unit) => {
   const val = Number(value) || 0;
@@ -104,7 +105,11 @@ const MaterialDetailPage = () => {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('Delete this listing?')) return;
+    const confirmed = await confirmToast('Delete this listing permanently?', {
+      confirmText: 'Yes, delete',
+      icon: '🗑️',
+    });
+    if (!confirmed) return;
     try {
       await materialService.delete(id);
       toast.success('Listing deleted');
@@ -148,7 +153,11 @@ const MaterialDetailPage = () => {
   };
 
   const handleAcceptBid = async (bidId) => {
-    if (!window.confirm('Accept this bid and close the listing?')) return;
+    const confirmed = await confirmToast('Accept this bid and close the listing?', {
+      confirmText: 'Accept bid',
+      icon: '🤝',
+    });
+    if (!confirmed) return;
     try {
       await materialService.acceptBid(id, bidId);
       toast.success('Bid accepted! Material marked as sold.');
@@ -175,7 +184,7 @@ const MaterialDetailPage = () => {
   const maxKg = qty ? convertToKg(qty.value || 0, qty.unit || 'tonnes') : 0;
 
   return (
-    <div className="min-h-screen pt-20 pb-12 px-4">
+    <div className="min-h-screen pt-18 md:pt-20 pb-12 px-3 md:px-4">
       <div className="max-w-6xl mx-auto">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-eco-700 mb-6">
@@ -189,7 +198,7 @@ const MaterialDetailPage = () => {
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Left — images */}
           <div>
-            <div className="rounded-2xl overflow-hidden bg-dark-300 h-80 mb-3">
+            <div className="rounded-2xl overflow-hidden bg-dark-300 h-56 sm:h-72 md:h-80 mb-3">
               {images?.length > 0 ? (
                 <img src={images[imgIdx]?.url} alt={title} className="w-full h-full object-cover" />
               ) : (
@@ -231,7 +240,7 @@ const MaterialDetailPage = () => {
               </div>
             </div>
 
-            <h1 className="font-display text-3xl font-bold mb-4">{title}</h1>
+            <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold mb-3 md:mb-4">{title}</h1>
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-3 mb-5">

@@ -16,18 +16,44 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const StatCard = ({ icon, label, value, sub, color = 'eco' }) => (
-  <div className="glass-card p-5 flex items-center gap-4 hover:-translate-y-1 transition-all duration-300">
-    <div className={`w-12 h-12 rounded-xl bg-${color}-500/10 border border-${color}-500/20 flex items-center justify-center text-${color}-500 shrink-0`}>
-      {icon}
+const COLOR_MAPS = {
+  eco: {
+    bg: 'bg-eco-500/10 dark:bg-eco-500/20',
+    border: 'border-eco-500/20 dark:border-eco-500/30',
+    text: 'text-eco-600 dark:text-eco-400'
+  },
+  teal: {
+    bg: 'bg-teal-500/10 dark:bg-teal-500/20',
+    border: 'border-teal-500/20 dark:border-teal-500/30',
+    text: 'text-teal-600 dark:text-teal-400'
+  },
+  amber: {
+    bg: 'bg-amber-500/10 dark:bg-amber-500/20',
+    border: 'border-amber-500/20 dark:border-amber-500/30',
+    text: 'text-amber-600 dark:text-amber-400'
+  },
+  sky: {
+    bg: 'bg-sky-500/10 dark:bg-sky-500/20',
+    border: 'border-sky-500/20 dark:border-sky-500/30',
+    text: 'text-sky-600 dark:text-sky-400'
+  }
+};
+
+const StatCard = ({ icon, label, value, sub, color = 'eco' }) => {
+  const colors = COLOR_MAPS[color] || COLOR_MAPS.eco;
+  return (
+    <div className="glass-card p-5 flex items-center gap-4 hover:-translate-y-1 hover:border-eco-500/20 transition-all duration-300 flex-shrink-0 w-72 md:w-auto snap-center select-none">
+      <div className={`w-12 h-12 rounded-xl ${colors.bg} border ${colors.border} flex items-center justify-center ${colors.text} shrink-0`}>
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <div className="font-display text-xl md:text-2xl font-bold text-eco-100 truncate">{value}</div>
+        <div className="text-sm font-semibold text-eco-200 truncate">{label}</div>
+        {sub && <div className="text-xs text-eco-300 mt-0.5 truncate">{sub}</div>}
+      </div>
     </div>
-    <div>
-      <div className="font-display text-2xl font-bold text-eco-100">{value}</div>
-      <div className="text-sm font-semibold text-eco-200">{label}</div>
-      {sub && <div className="text-xs text-eco-300 mt-0.5">{sub}</div>}
-    </div>
-  </div>
-);
+  );
+};
 
 const DashboardPage = () => {
   const { user, updateUser } = useAuth();
@@ -140,36 +166,36 @@ const DashboardPage = () => {
   const verifiedSellers = getVerifiedSellers();
 
   return (
-    <div className="min-h-screen pt-20 pb-12 px-4">
+    <div className="min-h-screen pt-20 pb-12 px-3 md:px-4">
       <div className="max-w-7xl mx-auto">
         
         {/* ── PERSONALIZED WELCOME BLOCK ── */}
-        <div className="glass-card p-6 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+        <div className="glass-card p-4 md:p-6 mb-6 md:mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-eco-500/5 to-transparent pointer-events-none" />
           <div className="z-10">
-            <h1 className="font-display text-3xl font-bold flex items-center gap-2">
-              Welcome back, <span className="gradient-text">{user?.name}</span>!
+            <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold flex items-center gap-2">
+              Welcome back, <span className="gradient-text">{user?.name?.trim()}</span>!
             </h1>
-            <p className="text-eco-400 font-medium mt-1">
-              🌱 Continue your sustainability journey and build a zero-waste future.
+            <p className="text-eco-400 font-medium mt-1 text-sm md:text-base">
+              🌱 Continue your sustainability journey.
             </p>
             {user?.badges?.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 mt-3">
-                <span className="text-xs text-eco-700 font-semibold mr-1">Achievements:</span>
+              <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mt-2 md:mt-3">
+                <span className="text-[10px] md:text-xs text-eco-300 font-semibold mr-1">Achievements:</span>
                 {user.badges.map((b) => (
-                  <span key={b} className="px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[10px] font-bold text-amber-400">
+                  <span key={b} className="px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[9px] md:text-[10px] font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1 hover:scale-105 transition-all duration-200">
                     🏆 {b}
                   </span>
                 ))}
               </div>
             )}
           </div>
-          <div className="flex flex-wrap gap-3 shrink-0 z-10">
-            <Link to="/marketplace" className="btn-primary flex items-center gap-2 text-sm">
+          <div className="flex flex-wrap gap-2 md:gap-3 shrink-0 z-10">
+            <Link to="/marketplace" className="btn-primary flex items-center gap-2 text-xs md:text-sm py-2.5 px-4">
               <ShoppingBag className="w-4 h-4" /> Explore Marketplace
             </Link>
             {isSeller && (
-              <Link to="/materials/new" className="bg-dark-400 hover:bg-dark-200 border border-dark-100/60 text-eco-100 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all flex items-center gap-2">
+              <Link to="/materials/new" className="bg-dark-400 hover:bg-dark-200 border border-dark-100/60 text-eco-100 rounded-xl px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm font-semibold transition-all flex items-center gap-2">
                 <Plus className="w-4 h-4 text-eco-500" /> List Material
               </Link>
             )}
@@ -177,7 +203,7 @@ const DashboardPage = () => {
         </div>
 
         {/* ── MODERN DASHBOARD IMPACT CARDS ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 mb-6 md:mb-8 md:grid md:grid-cols-4 md:gap-4 md:overflow-visible md:pb-0 snap-x snap-mandatory">
           <StatCard 
             icon={<Leaf className="w-5 h-5" />} 
             label="Total CO₂ Saved" 
@@ -208,7 +234,7 @@ const DashboardPage = () => {
           />
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-6 md:gap-8">
           
           {/* ── LEFT & CENTER COLUMNS ── */}
           <div className="lg:col-span-2 space-y-8">
@@ -218,7 +244,7 @@ const DashboardPage = () => {
               <h2 className="font-display font-bold text-xl mb-4 flex items-center gap-2">
                 ⚡ Quick Actions
               </h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
                 <Link to="/marketplace" className="glass-card p-4 text-center hover:bg-eco-50/50 border hover:border-eco-500/30 transition-all duration-300 text-eco-100">
                   <ShoppingBag className="w-6 h-6 mx-auto text-eco-500 mb-2" />
                   <div className="text-xs font-bold">Buy Materials</div>
@@ -320,7 +346,7 @@ const DashboardPage = () => {
                 <h2 className="font-display font-bold text-xl mb-4 flex items-center gap-2">
                   🌎 Real-World Environmental Equivalents
                 </h2>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 md:grid md:grid-cols-3 md:gap-4 md:overflow-visible md:pb-0">
                   <div className="glass-card p-4 text-center">
                     <Trees className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
                     <div className="font-display font-bold text-lg">{treesEquiv}</div>

@@ -124,4 +124,60 @@
       radial-gradient(ellipse 50% 50% at 90% 80%, var(--mesh-radial-2) 0%, transparent 60%);
     transition: background-color 0.3s ease;
   }
+
+  /* Mobile bottom nav safe area */
+  .pb-safe-bottom {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Hide scrollbar but allow scrolling */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+}
+
+/* ── Mobile-Specific Global Styles ── */
+@media (max-width: 767px) {
+  /* Remove tap highlight on iOS/Android */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Smooth momentum scrolling */
+  .overflow-y-auto,
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent overscroll bounce on body */
+  html, body {
+    overscroll-behavior-y: contain;
+  }
+}
+
+/* ── Bottom Sheet Overlay ── */
+.bottom-sheet-backdrop {
+  @apply fixed inset-0 z-40 bg-black/50 backdrop-blur-sm;
+  animation: fadeIn 0.2s ease;
+}
+
+.bottom-sheet {
+  @apply fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl border-t border-dark-100 overflow-y-auto;
+  background-color: rgba(var(--bg-card), 0.98);
+  backdrop-filter: blur(20px);
+  max-height: 85vh;
+  animation: slideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { transform: translateY(0); }
+  to   { transform: translateY(100%); }
 }

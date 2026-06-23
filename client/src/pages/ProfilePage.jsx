@@ -3,13 +3,14 @@
  */
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { userService } from '../services';
 import { useForm } from 'react-hook-form';
 import { useDropzone } from 'react-dropzone';
 import toast from 'react-hot-toast';
 import { 
   BadgeCheck, Camera, Leaf, Award, Trophy, Star, 
-  History, Lock, Unlock, Calendar, Settings, Compass 
+  History, Lock, Unlock, Calendar, Settings, Compass
 } from 'lucide-react';
 
 const INDUSTRY_TYPES = [
@@ -43,7 +44,8 @@ const BADGES_LIST = [
 ];
 
 const ProfilePage = () => {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, logout } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [avatar, setAvatar] = useState(null);
   const [preview, setPreview] = useState(user?.avatar || '');
@@ -155,71 +157,73 @@ const ProfilePage = () => {
   };
 
   return (
-    <div className="min-h-screen pt-20 pb-12 px-4">
+    <div className="min-h-screen pt-20 pb-12 px-3 md:px-4">
       <div className="max-w-4xl mx-auto">
         
         {/* Profile Header Card */}
-        <div className="glass-card p-6 mb-8 flex flex-col md:flex-row items-center gap-6 relative overflow-hidden">
+        <div className="glass-card p-6 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-eco-500/5 to-transparent pointer-events-none" />
-          <div {...getRootProps()} className="relative cursor-pointer group shrink-0 z-10">
-            <div className="w-24 h-24 rounded-full overflow-hidden bg-eco-600/20 flex items-center justify-center border-2 border-eco-500/30">
-              {preview ? (
-                <img src={preview} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-4xl font-bold text-eco-400">{user?.name?.[0]}</span>
-              )}
+          <div className="flex flex-col md:flex-row items-center gap-6 z-10">
+            <div {...getRootProps()} className="relative cursor-pointer group shrink-0">
+              <div className="w-24 h-24 rounded-full overflow-hidden bg-eco-600/20 flex items-center justify-center border-2 border-eco-500/30">
+                {preview ? (
+                  <img src={preview} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-4xl font-bold text-eco-400">{user?.name?.[0]}</span>
+                )}
+              </div>
+              <div className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+                <Camera className="w-5 h-5 text-white" />
+              </div>
+              <input {...getInputProps()} />
             </div>
-            <div className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
-              <Camera className="w-5 h-5 text-white" />
-            </div>
-            <input {...getInputProps()} />
-          </div>
-          
-          <div className="text-center md:text-left z-10">
-            <div className="font-display font-bold text-2xl flex items-center justify-center md:justify-start gap-2">
-              {user?.name}
-              {user?.verified && <BadgeCheck className="w-6 h-6 text-eco-400" />}
-            </div>
-            <div className="text-sm text-eco-700 mt-1">{user?.email}</div>
-            <div className="flex flex-wrap gap-2 mt-3 justify-center md:justify-start">
-              <span className="px-2.5 py-0.5 rounded-full bg-eco-500/10 border border-eco-500/20 text-xs font-medium capitalize text-eco-400">
-                {user?.role}
-              </span>
-              {user?.industryType && (
-                <span className="px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-xs text-eco-200">
-                  🏭 {user.industryType}
+            
+            <div className="text-center md:text-left">
+              <div className="font-display font-bold text-2xl flex items-center justify-center md:justify-start gap-2">
+                {user?.name}
+                {user?.verified && <BadgeCheck className="w-6 h-6 text-eco-400" />}
+              </div>
+              <div className="text-sm text-eco-700 mt-1">{user?.email}</div>
+              <div className="flex flex-wrap gap-2 mt-3 justify-center md:justify-start">
+                <span className="px-2.5 py-0.5 rounded-full bg-eco-500/10 border border-eco-500/20 text-xs font-medium capitalize text-eco-400">
+                  {user?.role}
                 </span>
-              )}
-              {user?.location?.city && (
-                <span className="px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-xs text-eco-200">
-                  📍 {user.location.city}, {user.location.state}
-                </span>
-              )}
+                {user?.industryType && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-xs text-eco-200">
+                    🏭 {user.industryType}
+                  </span>
+                )}
+                {user?.location?.city && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-xs text-eco-200">
+                    📍 {user.location.city}, {user.location.state}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Tab Selection */}
-        <div className="flex border-b border-white/10 mb-8 gap-4">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide border-b border-white/10 mb-6 md:mb-8 pb-0">
           <button
             onClick={() => setActiveTab('achievements')}
-            className={`pb-3 font-display font-semibold text-sm flex items-center gap-2 border-b-2 transition-all ${
+            className={`pb-3 font-display font-semibold text-sm flex items-center gap-1.5 md:gap-2 border-b-2 transition-all whitespace-nowrap ${
               activeTab === 'achievements'
                 ? 'border-eco-500 text-eco-400'
                 : 'border-transparent text-eco-700 hover:text-eco-300'
             }`}
           >
-            <Compass className="w-4 h-4" /> Sustainability Journey
+            <Compass className="w-4 h-4" /> Journey
           </button>
           <button
             onClick={() => setActiveTab('settings')}
-            className={`pb-3 font-display font-semibold text-sm flex items-center gap-2 border-b-2 transition-all ${
+            className={`pb-3 font-display font-semibold text-sm flex items-center gap-1.5 md:gap-2 border-b-2 transition-all whitespace-nowrap ${
               activeTab === 'settings'
                 ? 'border-eco-500 text-eco-400'
                 : 'border-transparent text-eco-700 hover:text-eco-300'
             }`}
           >
-            <Settings className="w-4 h-4" /> Edit Profile & Settings
+            <Settings className="w-4 h-4" /> Settings
           </button>
         </div>
 
@@ -228,7 +232,7 @@ const ProfilePage = () => {
           <div className="space-y-8 animate-fadeIn">
             
             {/* Sustainability Metrics Grid */}
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
               
               {/* EcoPoints summary */}
               <div className="glass-card p-5 text-center flex flex-col justify-between">
@@ -290,7 +294,7 @@ const ProfilePage = () => {
               <h2 className="font-display font-bold text-xl mb-4 flex items-center gap-2 text-eco-200">
                 <Trophy className="w-5 h-5 text-amber-500" /> Sustainability Milestones & Badges
               </h2>
-              <div className="grid md:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-5">
                 {BADGES_LIST.map((badge) => {
                   const isUnlocked = user?.badges?.includes(badge.name) || (user?.ecoPoints >= badge.points);
                   return (

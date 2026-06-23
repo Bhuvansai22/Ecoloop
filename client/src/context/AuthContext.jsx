@@ -14,15 +14,20 @@ export const AuthProvider = ({ children }) => {
   const [token,   setToken]   = useState(() => localStorage.getItem('ecoloop_token'));
   const [loading, setLoading] = useState(true);
 
+  // Wake up the server immediately (fire-and-forget)
+  useEffect(() => {
+    api.get('/health', { timeout: 5000 }).catch(() => {});
+  }, []);
+
   // Load user from token on mount
   useEffect(() => {
     const fetchMe = async () => {
       if (!token) { setLoading(false); return; }
       try {
-        const { data } = await api.get('/auth/me');
+        const { data } = await api.get('/auth/me', { timeout: 10000 });
         setUser(data.user);
       } catch {
-        // Token invalid or expired
+        // Token invalid, expired, or server unreachable
         localStorage.removeItem('ecoloop_token');
         setToken(null);
         setUser(null);
@@ -30,7 +35,18 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
       }
     };
-    fetchMe();
+
+    // Safety fallback: if auth check hangs, stop loading after 10s
+    const safetyTimer = setTimeout(() => {
+      setLoading((prev) => {
+        if (prev) {
+          console.warn('Auth check timed out — showing app without auth');
+        }
+        return false;
+      });
+    }, 10000);
+
+    fetchMe().finally(() => clearTimeout(safetyTimer));
   }, [token]);
 
   // Set up response interceptor to handle 401s dynamically in React state

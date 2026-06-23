@@ -76,10 +76,9 @@ const MaterialCard = ({ material, compact = false }) => {
           </div>
         )}
 
-        {/* Carbon badge */}
-        <div className="flex items-center gap-1.5 text-xs text-eco-500 bg-eco-500/10 rounded-lg px-2.5 py-1.5 mb-3 font-semibold">
-          <Leaf className="w-3.5 h-3.5" />
-          ~{carbonSaved} kg CO₂ saving potential
+        <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-eco-500 bg-eco-500/10 rounded-lg px-2 py-1 sm:px-2.5 sm:py-1.5 mb-3 font-semibold">
+          <Leaf className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+          <span className="truncate">~{carbonSaved} kg CO₂ saving potential</span>
         </div>
 
         {/* Footer */}

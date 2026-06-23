@@ -81,11 +81,11 @@ const TransactionsPage = () => {
 
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10">
+    <div className="max-w-4xl mx-auto px-3 md:px-4 py-8 md:py-10">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="font-display text-3xl font-bold text-eco-100">
+          <h1 className="font-display text-2xl md:text-3xl font-bold text-eco-100">
             {isSeller ? 'Incoming Requests' : 'My Deal Negotiations'}
           </h1>
           <p className="text-eco-400 text-sm mt-1">
@@ -96,14 +96,14 @@ const TransactionsPage = () => {
         </div>
         <button
           onClick={() => fetchTransactions(activeTab, page)}
-          className="flex items-center gap-2 text-sm bg-dark-400 hover:bg-dark-300 text-eco-400 border border-dark-100 px-4 py-2 rounded-xl transition-all"
+          className="flex items-center justify-center gap-2 text-sm bg-dark-400 hover:bg-dark-300 text-eco-400 border border-dark-100 px-4 py-2 rounded-xl transition-all self-start sm:self-center"
         >
           <RefreshCw className="w-4 h-4" /> Refresh
         </button>
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex gap-2 flex-wrap mb-6">
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 mb-6">
         {TABS.map((t) => {
           const Icon = t.icon;
           return (
