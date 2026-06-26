@@ -32,7 +32,7 @@ const MessagesPage = () => {
     if (!user?._id) return;
 
     const fetchConvos = messageService.getConversations().then(({ data }) => data.conversations);
-    const fetchPartners = transactionService.getAll({ limit: 100 }).then(({ data }) => {
+    const fetchPartners = transactionService.getAll({ limit: 20 }).then(({ data }) => {
       const uniquePartners = [];
       const seen = new Set();
       data.transactions.forEach(t => {

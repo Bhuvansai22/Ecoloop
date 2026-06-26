@@ -75,25 +75,26 @@ const DashboardPage = () => {
 
   const loadDashboardData = useCallback(async () => {
     try {
-      // Load general stats
-      const { data } = await userService.getDashboard();
-      setStats(data.stats);
-
-      // Refresh global user state to get latest EcoPoints, activities, badges
-      const { data: profileRes } = await userService.getProfile();
-      updateUser(profileRes.user);
-
       if (user?.role === 'seller') {
-        const { data: myListingsData } = await materialService.getMy({ limit: 5 });
-        setMyListings(myListingsData.materials || []);
+        const [dashboardRes, profileRes, myListingsRes] = await Promise.all([
+          userService.getDashboard(),
+          userService.getProfile(),
+          materialService.getMy({ limit: 5 })
+        ]);
+        setStats(dashboardRes.data.stats);
+        updateUser(profileRes.data.user);
+        setMyListings(myListingsRes.data.materials || []);
       } else {
-        // Load intelligent matches based on buyer industry
-        const { data: matchData } = await materialService.getMatches();
-        setMatches(matchData.matches || []);
-
-        // Load new arrivals
-        const { data: newArrivalData } = await materialService.getAll({ limit: 3 });
-        setNewArrivals(newArrivalData.materials || []);
+        const [dashboardRes, profileRes, matchDataRes, newArrivalDataRes] = await Promise.all([
+          userService.getDashboard(),
+          userService.getProfile(),
+          materialService.getMatches(),
+          materialService.getAll({ limit: 3 })
+        ]);
+        setStats(dashboardRes.data.stats);
+        updateUser(profileRes.data.user);
+        setMatches(matchDataRes.data.matches || []);
+        setNewArrivals(newArrivalDataRes.data.materials || []);
       }
     } catch (err) {
       toast.error('Failed to load dashboard data');

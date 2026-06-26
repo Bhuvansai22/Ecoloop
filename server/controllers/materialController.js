@@ -168,13 +168,15 @@ const getMaterials = async (req, res) => {
     }
 
     const skip  = (Number(page) - 1) * Number(limit);
-    const total = await Material.countDocuments(query);
-
-    const materials = await Material.find(query)
-      .populate('seller', 'name companyName verified location')
-      .sort(sort)
-      .skip(skip)
-      .limit(Number(limit));
+    const [total, materials] = await Promise.all([
+      Material.countDocuments(query),
+      Material.find(query)
+        .populate('seller', 'name companyName verified location')
+        .sort(sort)
+        .skip(skip)
+        .limit(Number(limit))
+        .lean()
+    ]);
 
     res.json({
       materials,
@@ -384,7 +386,8 @@ const getMatches = async (req, res) => {
     const matches = await Material.find(query)
       .populate('seller', 'name companyName verified location')
       .sort('-createdAt')
-      .limit(20);
+      .limit(20)
+      .lean();
 
     res.json({ matches, count: matches.length });
   } catch (err) {
@@ -403,12 +406,14 @@ const getMyMaterials = async (req, res) => {
     const query = { seller: req.user._id };
     if (status) query.status = status;
 
-    const materials = await Material.find(query)
-      .sort('-createdAt')
-      .skip((pg - 1) * lim)
-      .limit(lim);
-
-    const total = await Material.countDocuments(query);
+    const [materials, total] = await Promise.all([
+      Material.find(query)
+        .sort('-createdAt')
+        .skip((pg - 1) * lim)
+        .limit(lim)
+        .lean(),
+      Material.countDocuments(query)
+    ]);
     res.json({ materials, total, page: pg, pages: Math.ceil(total / lim) });
   } catch (err) {
     res.status(500).json({ message: err.message });

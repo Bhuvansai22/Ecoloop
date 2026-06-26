@@ -78,18 +78,23 @@ const getDashboard = async (req, res) => {
     let stats = {};
 
     if (role === 'seller') {
-      const [listings, transactions] = await Promise.all([
-        Material.find({ seller: userId }),
+      const [activeListings, soldListings, totalViews, transactions] = await Promise.all([
+        Material.countDocuments({ seller: userId, status: 'active' }),
+        Material.countDocuments({ seller: userId, status: 'sold' }),
+        Material.aggregate([
+          { $match: { seller: userId } },
+          { $group: { _id: null, totalViews: { $sum: '$views' } } }
+        ]),
         Transaction.find({ seller: userId })
           .populate('material', 'title category images price quantity')
           .populate('buyer', 'name companyName avatar')
           .sort('-createdAt')
-          .limit(20),
+          .limit(20)
+          .lean(),
       ]);
 
-      const activeListings  = listings.filter((l) => l.status === 'active').length;
-      const soldListings    = listings.filter((l) => l.status === 'sold').length;
-      const totalViews      = listings.reduce((sum, l) => sum + l.views, 0);
+      const totalListings = activeListings + soldListings;
+      const viewsCount = totalViews.length > 0 ? totalViews[0].totalViews : 0;
       const pendingDeals    = transactions.filter((t) => t.status === 'pending').length;
       const completedDeals  = transactions.filter((t) => t.status === 'completed').length;
       const totalCarbonSaved = transactions
@@ -97,7 +102,7 @@ const getDashboard = async (req, res) => {
         .reduce((sum, t) => sum + (t.carbonSaved || 0), 0);
 
       stats = {
-        listings: { total: listings.length, active: activeListings, sold: soldListings, totalViews },
+        listings: { total: totalListings, active: activeListings, sold: soldListings, totalViews: viewsCount },
         deals:    { pending: pendingDeals, completed: completedDeals },
         carbon:   { totalSaved: totalCarbonSaved },
         recentTransactions: transactions,
@@ -107,7 +112,8 @@ const getDashboard = async (req, res) => {
         .populate('material', 'title category images price quantity')
         .populate('seller', 'name companyName verified avatar')
         .sort('-createdAt')
-        .limit(20);
+        .limit(20)
+        .lean();
 
       const pendingDeals   = transactions.filter((t) => t.status === 'pending').length;
       const completedDeals = transactions.filter((t) => t.status === 'completed').length;

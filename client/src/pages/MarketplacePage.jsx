@@ -21,8 +21,17 @@ const MarketplacePage = () => {
   const [pages,     setPages]      = useState(1);
   const [loading,   setLoading]    = useState(true);
   const [search,    setSearch]     = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [filters,   setFilters]    = useState(DEFAULT_FILTERS);
   const socket = useSocket();
+
+  const debouncedSetSearch = useCallback(
+    debounce((q) => {
+      setSearch(q);
+      setPage(1);
+    }, 500),
+    []
+  );
 
   const fetchMaterials = useCallback(async (q, f, p, silent = false) => {
     if (!silent) setLoading(true);
@@ -57,13 +66,7 @@ const MarketplacePage = () => {
     }
   }, [socket, fetchMaterials, search, filters, page]);
 
-  // Periodically refresh listings in the background every 10 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchMaterials(search, filters, page, true);
-    }, 10000);
-    return () => clearInterval(interval);
-  }, [fetchMaterials, search, filters, page]);
+
 
   const handleFilterChange = (newF) => {
     setFilters((prev) => ({ ...prev, ...newF }));
@@ -93,8 +96,11 @@ const MarketplacePage = () => {
           <input
             type="text"
             placeholder="Search materials, categories, tags..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            value={searchInput}
+            onChange={(e) => { 
+              setSearchInput(e.target.value); 
+              debouncedSetSearch(e.target.value); 
+            }}
             className="input-field pl-12 text-base py-4"
           />
           {loading && (
