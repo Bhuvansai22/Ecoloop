@@ -1,9 +1,12 @@
 /**
  * MaterialCard — used in Marketplace and Dashboard
  */
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, Package, DollarSign, Leaf, BadgeCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { getImageUrl } from '../utils/getImageUrl';
+import { calculateCarbonSaved } from '../utils/carbonCalc';
 
 const STATUS_COLORS = {
   active:  'bg-eco-500/20 text-eco-400',
@@ -12,13 +15,14 @@ const STATUS_COLORS = {
 };
 
 const MaterialCard = ({ material, compact = false }) => {
+  const [imgError, setImgError] = useState(false);
   const {
     _id, title, category, quantity, price, images, location,
     seller, status, createdAt, carbonFactor,
   } = material;
 
-  const img = images?.[0]?.url;
-  const carbonSaved = Math.round(((quantity?.value || 0) * (carbonFactor || 200))).toLocaleString();
+  const img = getImageUrl(images?.[0]?.url);
+  const carbonSaved = calculateCarbonSaved(category, quantity?.value, quantity?.unit, carbonFactor).toLocaleString();
 
   return (
     <Link
@@ -27,11 +31,12 @@ const MaterialCard = ({ material, compact = false }) => {
     >
       {/* Image */}
       <div className={`relative overflow-hidden ${compact ? 'h-36' : 'h-48'} bg-dark-300`}>
-        {img ? (
+        {img && !imgError ? (
           <img
             src={img}
             alt={title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            onError={() => setImgError(true)}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-eco-800">

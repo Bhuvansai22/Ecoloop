@@ -7,7 +7,7 @@ import { useAuth, AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 
 import Navbar       from './components/Navbar';
-import BottomNav    from './components/BottomNav';
+
 import Footer       from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -39,8 +39,7 @@ const AppLayout = () => {
   return (
     <div className="min-h-screen bg-mesh flex flex-col font-sans">
       <Navbar />
-      {/* Main content — add bottom padding on mobile for bottom nav */}
-      <div className={`flex-grow ${user && !isAuthPage ? 'pb-safe-bottom md:pb-0' : ''}`}>
+      <div className="flex-grow">
         <Routes>
           {/* Public */}
           <Route path="/"          element={<HomePage />} />
@@ -76,7 +75,7 @@ const AppLayout = () => {
         </Routes>
       </div>
       {isPublicPage && <Footer />}
-      <BottomNav />
+
     </div>
   );
 };

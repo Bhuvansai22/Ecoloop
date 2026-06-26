@@ -340,31 +340,7 @@ const DashboardPage = () => {
               </div>
             )}
 
-            {/* ── CO₂ IMPACT EQUIVALENTS VISUALIZATION ── */}
-            {totalSaved > 0 && (
-              <div>
-                <h2 className="font-display font-bold text-xl mb-4 flex items-center gap-2">
-                  🌎 Real-World Environmental Equivalents
-                </h2>
-                <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 md:grid md:grid-cols-3 md:gap-4 md:overflow-visible md:pb-0">
-                  <div className="glass-card p-4 text-center">
-                    <Trees className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-                    <div className="font-display font-bold text-lg">{treesEquiv}</div>
-                    <div className="text-[10px] text-eco-700">Trees Planted Equivalent</div>
-                  </div>
-                  <div className="glass-card p-4 text-center">
-                    <Car className="w-8 h-8 text-teal-500 mx-auto mb-2" />
-                    <div className="font-display font-bold text-lg">{carKmAvoided.toLocaleString()}</div>
-                    <div className="text-[10px] text-eco-700">Km of Car Travel Avoided</div>
-                  </div>
-                  <div className="glass-card p-4 text-center">
-                    <Plane className="w-8 h-8 text-sky-500 mx-auto mb-2" />
-                    <div className="font-display font-bold text-lg">{flightHours}</div>
-                    <div className="text-[10px] text-eco-700">Flight Hours Offset</div>
-                  </div>
-                </div>
-              </div>
-            )}
+
 
 
 

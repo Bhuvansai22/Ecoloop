@@ -17,12 +17,12 @@ const CATEGORIES = [
 const UNITS = ['kg', 'tonnes', 'litres', 'units', 'cubic metres'];
 
 const MaterialFormPage = () => {
-  const { id }     = useParams(); // present on edit route
-  const isEdit     = Boolean(id);
-  const navigate   = useNavigate();
-  const [loading,  setLoading]  = useState(false);
+  const { id } = useParams(); // present on edit route
+  const isEdit = Boolean(id);
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
   const [previews, setPreviews] = useState([]);
-  const [files,    setFiles]    = useState([]);
+  const [files, setFiles] = useState([]);
   const [existingImages, setExistingImages] = useState([]);
   const [priceHint, setPriceHint] = useState('');
 
@@ -42,9 +42,9 @@ const MaterialFormPage = () => {
         const { latitude, longitude } = position.coords;
         setValue('lat', latitude.toFixed(6));
         setValue('lng', longitude.toFixed(6));
-        
+
         toast.loading('Reverse-geocoding address...', { id: toastId });
-        
+
         try {
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
           const data = await res.json();
@@ -91,6 +91,7 @@ const MaterialFormPage = () => {
           state: m.location?.state || '',
           condition: m.condition,
           tags: m.tags?.join(', ') || '',
+          carbonFactor: m.carbonFactor || '',
         });
       });
     }
@@ -113,7 +114,7 @@ const MaterialFormPage = () => {
     setPreviews((prev) => prev.filter((_, idx) => idx !== i));
   };
 
-  const handleAutoFillAI = async () => {
+  const handleAutoFillAI = async (mode = 'all') => {
     if (files.length === 0) {
       toast.error('Please select an image first.');
       return;
@@ -127,17 +128,28 @@ const MaterialFormPage = () => {
       const toastId = toast.loading('Analyzing image with AI...');
       try {
         const { data } = await materialService.analyzeImage(base64Image);
-        
-        if (data.title) setValue('title', data.title);
-        if (data.description) setValue('description', data.description);
-        if (data.category) setValue('category', data.category);
-        if (data.condition) setValue('condition', data.condition);
-        if (data.tags) setValue('tags', data.tags);
-        if (data.price) setValue('price', data.price);
-        if (data.unit) setValue('unit', data.unit);
-        if (data.priceExplanation) setPriceHint(data.priceExplanation);
 
-        toast.success('Form auto-filled successfully! ✨', { id: toastId });
+        if (mode === 'all') {
+          if (data.title) setValue('title', data.title);
+          if (data.description) setValue('description', data.description);
+          if (data.category) setValue('category', data.category);
+          if (data.condition) setValue('condition', data.condition);
+          if (data.tags) setValue('tags', data.tags);
+          if (data.price) setValue('price', data.price);
+          if (data.unit) setValue('unit', data.unit);
+          if (data.priceExplanation) setPriceHint(data.priceExplanation);
+          if (data.carbonFactor) {
+            const cf = parseFloat(String(data.carbonFactor).replace(/[^\d.-]/g, ''));
+            if (!isNaN(cf)) setValue('carbonFactor', cf);
+          }
+          toast.success('Form auto-filled successfully! ✨', { id: toastId });
+        } else if (mode === 'carbon') {
+          if (data.carbonFactor) {
+            const cf = parseFloat(String(data.carbonFactor).replace(/[^\d.-]/g, ''));
+            if (!isNaN(cf)) setValue('carbonFactor', cf);
+          }
+          toast.success('Carbon Factor calculated! ✨', { id: toastId });
+        }
       } catch {
         toast.error('AI analysis failed. Please try again.', { id: toastId });
       }
@@ -286,10 +298,20 @@ const MaterialFormPage = () => {
               </div>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-eco-300 mb-1.5">Tags (comma separated)</label>
-              <input className="input-field" placeholder="aluminium, grade-a, clean-scrap"
-                {...register('tags')} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-eco-300 mb-1.5">Tags (comma separated)</label>
+                <input className="input-field" placeholder="aluminium, grade-a, clean-scrap"
+                  {...register('tags')} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-eco-300 mb-1.5 flex items-center justify-between">
+                  Carbon Factor (kg CO₂ / {unit})
+                  <span className="text-[10px] text-eco-500 font-bold bg-eco-500/10 px-1.5 py-0.5 rounded">✨ AI</span>
+                </label>
+                <input type="number" step="0.01" className="input-field" placeholder="Auto-calculated by AI or enter manually"
+                  {...register('carbonFactor')} />
+              </div>
             </div>
           </div>
 
@@ -335,7 +357,7 @@ const MaterialFormPage = () => {
               {files.length > 0 && (
                 <button
                   type="button"
-                  onClick={handleAutoFillAI}
+                  onClick={() => handleAutoFillAI('all')}
                   className="text-xs bg-eco-400/20 hover:bg-eco-400/30 text-eco-400 border border-eco-400/30 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 font-semibold cursor-pointer"
                 >
                   ✨ Auto-fill with AI
@@ -351,9 +373,8 @@ const MaterialFormPage = () => {
               </div>
             )}
             <div {...getRootProps()}
-              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
-                isDragActive ? 'border-eco-500 bg-eco-500/5' : 'border-white/10 hover:border-eco-500/40'
-              }`}>
+              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${isDragActive ? 'border-eco-500 bg-eco-500/5' : 'border-white/10 hover:border-eco-500/40'
+                }`}>
               <input {...getInputProps()} />
               <Upload className="w-8 h-8 text-eco-700 mx-auto mb-2" />
               <p className="text-sm text-eco-700">

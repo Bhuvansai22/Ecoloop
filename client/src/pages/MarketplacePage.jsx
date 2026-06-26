@@ -40,15 +40,9 @@ const MarketplacePage = () => {
     }
   }, []);
 
-  // Debounced search
-  const debouncedFetch = useCallback(
-    debounce((q, f, p) => fetchMaterials(q, f, p), 400),
-    [fetchMaterials]
-  );
-
   useEffect(() => {
-    debouncedFetch(search, filters, page);
-  }, [search, filters, page]);
+    fetchMaterials(search, filters, page);
+  }, [search, filters, page, fetchMaterials]);
 
   // Handle live material listings
   useEffect(() => {

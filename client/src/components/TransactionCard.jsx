@@ -4,6 +4,7 @@
 import { formatDistanceToNow } from 'date-fns';
 import { Leaf, Package, User, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getImageUrl } from '../utils/getImageUrl';
 
 const STATUS_CONFIG = {
   pending:   { color: 'bg-amber-500/20 text-amber-400',  label: 'Pending' },
@@ -27,9 +28,19 @@ const TransactionCard = ({ transaction, onAction, currentUserId }) => {
     <div className="glass-card p-4 hover:border-eco-500/20 transition-all">
       <div className="flex gap-4">
         {/* Material thumbnail */}
-        <div className="w-16 h-16 rounded-xl overflow-hidden bg-dark-300 shrink-0">
+        <div className="w-16 h-16 rounded-xl overflow-hidden bg-dark-300 shrink-0 relative">
           {material?.images?.[0]?.url ? (
-            <img src={material.images[0].url} alt="" className="w-full h-full object-cover" />
+            <>
+              <div className="w-full h-full absolute inset-0 flex items-center justify-center bg-dark-300 z-0">
+                <Package className="w-6 h-6 text-eco-800" />
+              </div>
+              <img 
+                src={getImageUrl(material.images[0].url)} 
+                alt="" 
+                className="w-full h-full object-cover absolute inset-0 z-10" 
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+            </>
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <Package className="w-6 h-6 text-eco-800" />

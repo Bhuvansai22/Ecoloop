@@ -13,6 +13,8 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { useSocket } from '../context/SocketContext';
 import { confirmToast } from '../components/ConfirmToast';
+import { getImageUrl } from '../utils/getImageUrl';
+import { calculateCarbonSaved } from '../utils/carbonCalc';
 
 const convertToKg = (value, unit) => {
   const val = Number(value) || 0;
@@ -179,7 +181,7 @@ const MaterialDetailPage = () => {
           seller, location, status, createdAt, views, tags, condition,
           carbonFactor, isAuction, auctionDetails } = material;
 
-  const carbonSaved = Math.round((qty?.value || 0) * (carbonFactor || 200));
+  const carbonSaved = calculateCarbonSaved(category, qty?.value, qty?.unit, carbonFactor);
   const isAuctionActive = isAuction && new Date() < new Date(auctionDetails?.endTime);
   const maxKg = qty ? convertToKg(qty.value || 0, qty.unit || 'tonnes') : 0;
 
@@ -198,9 +200,19 @@ const MaterialDetailPage = () => {
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Left — images */}
           <div>
-            <div className="rounded-2xl overflow-hidden bg-dark-300 h-56 sm:h-72 md:h-80 mb-3">
+            <div className="rounded-2xl overflow-hidden bg-dark-300 h-56 sm:h-72 md:h-80 mb-3 relative">
               {images?.length > 0 ? (
-                <img src={images[imgIdx]?.url} alt={title} className="w-full h-full object-cover" />
+                <>
+                  <div className="w-full h-full absolute inset-0 flex items-center justify-center bg-dark-300 z-0">
+                    <Package className="w-16 h-16 text-eco-800" />
+                  </div>
+                  <img 
+                    src={getImageUrl(images[imgIdx]?.url)} 
+                    alt={title} 
+                    className="w-full h-full object-cover absolute inset-0 z-10" 
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
+                </>
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <Package className="w-16 h-16 text-eco-800" />
@@ -211,8 +223,16 @@ const MaterialDetailPage = () => {
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {images.map((img, i) => (
                   <button key={i} onClick={() => setImgIdx(i)}
-                    className={`w-16 h-16 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${i === imgIdx ? 'border-eco-500' : 'border-transparent'}`}>
-                    <img src={img.url} alt="" className="w-full h-full object-cover" />
+                    className={`relative w-16 h-16 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${i === imgIdx ? 'border-eco-500' : 'border-transparent'}`}>
+                    <div className="w-full h-full absolute inset-0 flex items-center justify-center bg-dark-300 z-0">
+                      <Package className="w-6 h-6 text-eco-800" />
+                    </div>
+                    <img 
+                      src={getImageUrl(img.url)} 
+                      alt="" 
+                      className="w-full h-full object-cover absolute inset-0 z-10" 
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
                   </button>
                 ))}
               </div>

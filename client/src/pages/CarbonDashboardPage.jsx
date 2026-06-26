@@ -105,23 +105,7 @@ const CarbonDashboardPage = () => {
               </div>
             </div>
 
-            {/* Equivalents */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              {[
-                { icon: <TreePine className="w-5 h-5" />, value: eq.trees.toLocaleString(),  label: 'Trees planted equiv.' },
-                { icon: <Car      className="w-5 h-5" />, value: eq.carKm.toLocaleString(),  label: 'Car km avoided' },
-                { icon: <Plane    className="w-5 h-5" />, value: eq.flights,                 label: 'Flight hours offset' },
-                { icon: <Home     className="w-5 h-5" />, value: eq.days.toLocaleString(),   label: 'Household days offset' },
-              ].map((e) => (
-                <div key={e.label} className="glass-card p-4 text-center">
-                  <div className="w-10 h-10 rounded-xl bg-eco-500/10 border border-eco-500/20 flex items-center justify-center text-eco-400 mx-auto mb-2">
-                    {e.icon}
-                  </div>
-                  <div className="font-display font-bold text-lg">{e.value}</div>
-                  <div className="text-xs text-eco-700">{e.label}</div>
-                </div>
-              ))}
-            </div>
+
 
             {/* Charts */}
             <div className="grid md:grid-cols-2 gap-6">

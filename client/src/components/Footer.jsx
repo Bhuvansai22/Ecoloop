@@ -10,7 +10,7 @@ const Footer = () => {
       {/* Light mesh highlight */}
       <div className="absolute bottom-0 right-1/4 w-72 h-72 rounded-full bg-eco-500/5 blur-[120px] pointer-events-none" />
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:py-12 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           
           {/* Logo & Description */}

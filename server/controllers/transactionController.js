@@ -39,7 +39,8 @@ const createTransaction = async (req, res) => {
     const carbonSaved = calculateCarbonSaved(
       material.category,
       Number(quantity) || material.quantity.value,
-      unit || material.quantity.unit
+      unit || material.quantity.unit,
+      material.carbonFactor
     );
 
     const transaction = await Transaction.create({

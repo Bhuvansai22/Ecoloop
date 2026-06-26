@@ -69,7 +69,7 @@ const createMaterial = async (req, res) => {
         address, city, state,
       },
       tags:         tags ? (Array.isArray(tags) ? tags : tags.split(',').map(t => t.trim()).filter(t => t !== '')) : [],
-      carbonFactor: getCarbonFactor(category),
+      carbonFactor: req.body.carbonFactor !== undefined ? Number(req.body.carbonFactor) : getCarbonFactor(category),
       condition,
       availableFrom,
       isAuction: req.body.isAuction === 'true' || req.body.isAuction === true,
@@ -252,7 +252,7 @@ const updateMaterial = async (req, res) => {
 
     const allowedFields = [
       'title', 'description', 'category', 'status', 'condition',
-      'tags', 'availableFrom',
+      'tags', 'availableFrom', 'carbonFactor'
     ];
 
     allowedFields.forEach((f) => {
@@ -260,6 +260,8 @@ const updateMaterial = async (req, res) => {
         if (f === 'tags') {
           const tagsVal = req.body.tags;
           material.tags = Array.isArray(tagsVal) ? tagsVal : tagsVal.split(',').map((t) => t.trim()).filter((t) => t !== '');
+        } else if (f === 'carbonFactor') {
+          material.carbonFactor = Number(req.body.carbonFactor);
         } else {
           material[f] = req.body[f];
         }
@@ -278,7 +280,8 @@ const updateMaterial = async (req, res) => {
       material.location.coordinates = [Number(req.body.lng), Number(req.body.lat)];
       if (req.body.address) material.location.address = req.body.address;
     }
-    if (req.body.category) {
+    // Only reset carbonFactor to category default if the user did NOT explicitly send one
+    if (req.body.category && req.body.carbonFactor === undefined) {
       material.carbonFactor = getCarbonFactor(req.body.category);
     }
 
@@ -395,16 +398,18 @@ const getMatches = async (req, res) => {
 const getMyMaterials = async (req, res) => {
   try {
     const { page = 1, limit = 10, status } = req.query;
+    const pg = Number(page);
+    const lim = Number(limit);
     const query = { seller: req.user._id };
     if (status) query.status = status;
 
     const materials = await Material.find(query)
       .sort('-createdAt')
-      .skip((page - 1) * limit)
-      .limit(Number(limit));
+      .skip((pg - 1) * lim)
+      .limit(lim);
 
     const total = await Material.countDocuments(query);
-    res.json({ materials, total, page: Number(page), pages: Math.ceil(total / limit) });
+    res.json({ materials, total, page: pg, pages: Math.ceil(total / lim) });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -509,8 +514,8 @@ const acceptBid = async (req, res) => {
 
     // Calculate CO2 saved
     const carbonSaved = bid.quantity
-      ? calculateCarbonSaved(material.category, bid.quantity, 'kg')
-      : Math.round((material.quantity?.value || 0) * (material.carbonFactor || 200));
+      ? calculateCarbonSaved(material.category, bid.quantity, 'kg', material.carbonFactor)
+      : calculateCarbonSaved(material.category, material.quantity?.value || 0, material.quantity?.unit || 'tonnes', material.carbonFactor);
 
     // Create a completed Transaction for the winning bidder
     const winningTransaction = await Transaction.create({
@@ -643,7 +648,8 @@ const analyzeImage = async (req, res) => {
 - 'tags' (a comma-separated string of 3-5 relevant keywords)
 - 'unit' (choose EXACTLY one from: kg, tonnes, litres, units, cubic metres)
 - 'price' (estimated market price in INR (₹) per unit of the material based on typical Indian scrap/recycling rates. Return ONLY the number/integer)
-- 'priceExplanation' (a brief 1-sentence explanation of the estimated price, e.g. "Copper scrap typically trades at ₹600-750 per kg based on purity.").
+- 'priceExplanation' (a brief 1-sentence explanation of the estimated price, e.g. "Copper scrap typically trades at ₹600-750 per kg based on purity.")
+- 'carbonFactor' (estimated kg of CO2 saved per unit (based on the 'unit' field) if this material is recycled instead of produced from raw materials. Return ONLY a number, e.g. 1.8, 0.5, 20).
 Output ONLY valid JSON.`;
 
     const response = await openai.chat.completions.create({
@@ -658,10 +664,12 @@ Output ONLY valid JSON.`;
         },
       ],
       response_format: { type: 'json_object' },
+      temperature: 0,
     });
 
     const content = response.choices[0].message.content;
-    const parsed = JSON.parse(content);
+    const cleanContent = content.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(cleanContent);
     
     // Normalize condition to match database enum ('new', 'good', 'fair', 'poor')
     if (parsed.condition) {
