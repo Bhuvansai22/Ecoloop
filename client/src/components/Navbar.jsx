@@ -112,9 +112,9 @@ const Navbar = () => {
             : 'bg-dark-300/80 backdrop-blur-md border-dark-100/20'
         }`}>
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 md:gap-2.5 font-display font-extrabold text-lg md:text-xl select-none group">
-            <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-eco-500/10 border border-eco-500/20 flex items-center justify-center group-hover:bg-eco-500/20 group-hover:rotate-12 transition-all">
-              <Leaf className="text-eco-500 w-4 h-4" />
+          <Link to="/" className="flex items-center font-display font-extrabold text-lg md:text-xl select-none group">
+            <div className="w-8 h-8 md:w-9 md:h-9 rounded-lg overflow-hidden flex items-center justify-center group-hover:rotate-12 transition-all shrink-0">
+              <img src="/ecoloop-logo-abstract.png" alt="Ecoloop" className="w-full h-full object-cover" />
             </div>
             <span className="tracking-tight text-eco-100 group-hover:text-eco-500 transition-colors">
               Eco<span className="text-eco-500 font-medium">Loop</span>
@@ -263,9 +263,9 @@ const Navbar = () => {
       >
         {/* Menu Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-dark-100/30">
-          <Link to="/" className="flex items-center gap-2 font-display font-extrabold text-lg select-none" onClick={() => setMobileMenuOpen(false)}>
-            <div className="w-7 h-7 rounded-lg bg-eco-500/10 border border-eco-500/20 flex items-center justify-center">
-              <Leaf className="text-eco-500 w-4 h-4" />
+          <Link to="/" className="flex items-center font-display font-extrabold text-lg select-none" onClick={() => setMobileMenuOpen(false)}>
+            <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center shrink-0">
+              <img src="/ecoloop-logo-abstract.png" alt="Ecoloop" className="w-full h-full object-cover" />
             </div>
             <span className="text-eco-100">
               Eco<span className="text-eco-500 font-medium">Loop</span>
