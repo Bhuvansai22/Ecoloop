@@ -672,7 +672,21 @@ Output ONLY valid JSON.`;
       temperature: 0,
     });
 
-    const content = response.choices[0].message.content;
+    const choice = response.choices && response.choices[0];
+    const message = choice && choice.message;
+    const content = message && message.content;
+
+    if (!content) {
+      console.error('AI Analysis failed to return content. Full choice object:', JSON.stringify(choice, null, 2));
+      if (message && message.refusal) {
+        return res.status(422).json({ message: `AI analysis refused: ${message.refusal}` });
+      }
+      if (choice && choice.finish_reason === 'content_filter') {
+        return res.status(422).json({ message: 'AI analysis blocked by safety content filters.' });
+      }
+      return res.status(502).json({ message: 'AI analysis returned an empty or invalid response.' });
+    }
+
     const cleanContent = content.replace(/```json/gi, '').replace(/```/g, '').trim();
     const parsed = JSON.parse(cleanContent);
     

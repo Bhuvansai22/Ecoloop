@@ -16,6 +16,46 @@ const CATEGORIES = [
 ];
 const UNITS = ['kg', 'tonnes', 'litres', 'units', 'cubic metres'];
 
+// Helper function to compress and resize images before uploading
+const compressImage = (file, maxWidth = 1024, maxHeight = 1024, quality = 0.7) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(dataUrl);
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+};
+
 const MaterialFormPage = () => {
   const { id } = useParams(); // present on edit route
   const isEdit = Boolean(id);
@@ -120,43 +160,39 @@ const MaterialFormPage = () => {
       return;
     }
 
-    const file = files[0];
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = async () => {
-      const base64Image = reader.result;
-      const toastId = toast.loading('Analyzing image with AI...');
-      try {
-        const { data } = await materialService.analyzeImage(base64Image);
+    const toastId = toast.loading('Compressing and analyzing image...');
+    try {
+      const file = files[0];
+      const base64Image = await compressImage(file, 1024, 1024, 0.7);
+      
+      const { data } = await materialService.analyzeImage(base64Image);
 
-        if (mode === 'all') {
-          if (data.title) setValue('title', data.title);
-          if (data.description) setValue('description', data.description);
-          if (data.category) setValue('category', data.category);
-          if (data.condition) setValue('condition', data.condition);
-          if (data.tags) setValue('tags', data.tags);
-          if (data.price) setValue('price', data.price);
-          if (data.unit) setValue('unit', data.unit);
-          if (data.priceExplanation) setPriceHint(data.priceExplanation);
-          if (data.carbonFactor) {
-            const cf = parseFloat(String(data.carbonFactor).replace(/[^\d.-]/g, ''));
-            if (!isNaN(cf)) setValue('carbonFactor', cf);
-          }
-          toast.success('Form auto-filled successfully! ✨', { id: toastId });
-        } else if (mode === 'carbon') {
-          if (data.carbonFactor) {
-            const cf = parseFloat(String(data.carbonFactor).replace(/[^\d.-]/g, ''));
-            if (!isNaN(cf)) setValue('carbonFactor', cf);
-          }
-          toast.success('Carbon Factor calculated! ✨', { id: toastId });
+      if (mode === 'all') {
+        if (data.title) setValue('title', data.title);
+        if (data.description) setValue('description', data.description);
+        if (data.category) setValue('category', data.category);
+        if (data.condition) setValue('condition', data.condition);
+        if (data.tags) setValue('tags', data.tags);
+        if (data.price) setValue('price', data.price);
+        if (data.unit) setValue('unit', data.unit);
+        if (data.priceExplanation) setPriceHint(data.priceExplanation);
+        if (data.carbonFactor) {
+          const cf = parseFloat(String(data.carbonFactor).replace(/[^\d.-]/g, ''));
+          if (!isNaN(cf)) setValue('carbonFactor', cf);
         }
-      } catch {
-        toast.error('AI analysis failed. Please try again.', { id: toastId });
+        toast.success('Form auto-filled successfully! ✨', { id: toastId });
+      } else if (mode === 'carbon') {
+        if (data.carbonFactor) {
+          const cf = parseFloat(String(data.carbonFactor).replace(/[^\d.-]/g, ''));
+          if (!isNaN(cf)) setValue('carbonFactor', cf);
+        }
+        toast.success('Carbon Factor calculated! ✨', { id: toastId });
       }
-    };
-    reader.onerror = () => {
-      toast.error('Failed to read image file.');
-    };
+    } catch (err) {
+      console.error('AI analysis error:', err);
+      const serverMessage = err?.response?.data?.message;
+      toast.error(serverMessage || 'AI analysis failed. Please try again.', { id: toastId });
+    }
   };
 
   const onSubmit = async (data) => {
