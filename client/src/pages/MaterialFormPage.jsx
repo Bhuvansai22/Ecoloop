@@ -165,7 +165,7 @@ const MaterialFormPage = () => {
       const file = files[0];
       const base64Image = await compressImage(file, 1024, 1024, 0.7);
       
-      const { data } = await materialService.analyzeImage(base64Image);
+      const { data } = await materialService.analyzeImage(base64Image, unit);
 
       if (mode === 'all') {
         if (data.title) setValue('title', data.title);

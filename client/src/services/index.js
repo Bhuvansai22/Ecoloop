@@ -13,7 +13,7 @@ export const materialService = {
   getBids: (id) => api.get(`/materials/${id}/bids`),
   acceptBid: (id, bidId) => api.post(`/materials/${id}/accept-bid`, { bidId }),
   recordView: (id) => api.post(`/materials/${id}/view`),
-  analyzeImage: (image) => api.post('/materials/analyze-image', { image }, { timeout: 30000 }),
+  analyzeImage: (image, unit) => api.post('/materials/analyze-image', { image, unit }, { timeout: 30000 }),
 };
 
 /** Transaction service */

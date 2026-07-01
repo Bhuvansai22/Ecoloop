@@ -8,7 +8,7 @@ const Bid         = require('../models/Bid');
 const Transaction = require('../models/Transaction');
 const User        = require('../models/User');
 const { cloudinary } = require('../middleware/upload');
-const { getCarbonFactor, calculateCarbonSaved } = require('../utils/carbonCalc');
+const { getCarbonFactor, calculateCarbonSaved, CARBON_FACTORS } = require('../utils/carbonCalc');
 const { buildGeoNearQuery } = require('../utils/geoUtils');
 const OpenAI = require('openai');
 
@@ -635,7 +635,7 @@ const acceptBid = async (req, res) => {
  */
 const analyzeImage = async (req, res) => {
   try {
-    const { image } = req.body;
+    const { image, unit } = req.body;
     if (!image) {
       return res.status(400).json({ message: 'No image provided' });
     }
@@ -645,16 +645,38 @@ const analyzeImage = async (req, res) => {
       baseURL: 'https://models.inference.ai.azure.com',
     });
 
+    const targetUnit = unit || 'kg';
+
     const prompt = `You are an expert waste material classifier. Analyze this image of waste/scrap material and provide a JSON response with the following fields: 
 - 'title' (a short, descriptive title)
 - 'description' (a brief description)
 - 'category' (choose EXACTLY one from: Metal Scrap, Plastics, Paper & Cardboard, Glass, Organic Waste, Textiles, Chemical Waste, Electronic Waste, Wood & Timber, Rubber, Concrete & Construction, Other)
 - 'condition' (choose EXACTLY one from: New, Used, Needs Repair, Scrap)
 - 'tags' (a comma-separated string of 3-5 relevant keywords)
-- 'unit' (choose EXACTLY one from: kg, tonnes, litres, units, cubic metres)
-- 'price' (estimated market price in INR (₹) per unit of the material based on typical Indian scrap/recycling rates. Return ONLY the number/integer)
+- 'unit' (use EXACTLY '${targetUnit}')
+- 'price' (estimated market price in INR (₹) per ${targetUnit} of the material based on typical Indian scrap/recycling rates. Return ONLY the number/integer)
 - 'priceExplanation' (a brief 1-sentence explanation of the estimated price, e.g. "Copper scrap typically trades at ₹600-750 per kg based on purity.")
-- 'carbonFactor' (estimated kg of CO2 saved per unit (based on the 'unit' field) if this material is recycled instead of produced from raw materials. Return ONLY a number, e.g. 1.8, 0.5, 20).
+- 'carbonFactor' (You MUST calculate this mathematically:
+  1. Identify the category from the list below.
+  2. Get its baseline factor (which is in kg CO2 saved per TONNE):
+     - Metal Scrap: 1800
+     - Plastics: 600
+     - Paper & Cardboard: 700
+     - Glass: 300
+     - Organic Waste: 250
+     - Textiles: 400
+     - Chemical Waste: 150
+     - Electronic Waste: 1000
+     - Wood & Timber: 400
+     - Rubber: 200
+     - Concrete & Construction: 100
+     - Other: 200
+  3. Convert that baseline factor per tonne to the target unit '${targetUnit}' using these rules:
+     - If unit is 'kg' or 'litres': divide by 1000 (e.g. for Concrete, 100 / 1000 = 0.1)
+     - If unit is 'tonnes': keep the baseline factor exactly (e.g. for Concrete, it is 100)
+     - If unit is 'units': multiply by 0.01 (e.g. for Concrete, 100 * 0.01 = 1)
+     - If unit is 'cubic metres': multiply by 0.8 (e.g. for Concrete, 100 * 0.8 = 80)
+  Return ONLY the final converted number as a float/integer).
 Output ONLY valid JSON.`;
 
     const response = await openai.chat.completions.create({
