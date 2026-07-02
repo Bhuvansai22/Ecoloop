@@ -32,7 +32,7 @@ const materialSchema = new mongoose.Schema(
       enum: CATEGORIES,
     },
     quantity: {
-      value: { type: Number, required: true, min: 0.01 },
+      value: { type: Number, required: true, min: 0 },
       unit:  {
         type: String,
         enum: ['kg', 'tonnes', 'litres', 'units', 'cubic metres'],

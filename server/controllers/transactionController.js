@@ -8,6 +8,30 @@ const Material    = require('../models/Material');
 const User        = require('../models/User');
 const { calculateCarbonSaved } = require('../utils/carbonCalc');
 
+const convertToKg = (value, unit) => {
+  const val = Number(value) || 0;
+  switch (unit) {
+    case 'kg':           return val;
+    case 'tonnes':       return val * 1000;
+    case 'litres':       return val; // 1L ≈ 1kg
+    case 'units':        return val * 10;   // 1 unit ≈ 10kg
+    case 'cubic metres': return val * 800;  // 1 m³ ≈ 800kg
+    default:             return val;
+  }
+};
+
+const convertFromKg = (valueInKg, targetUnit) => {
+  const val = Number(valueInKg) || 0;
+  switch (targetUnit) {
+    case 'kg':           return val;
+    case 'tonnes':       return val / 1000;
+    case 'litres':       return val;
+    case 'units':        return val / 10;
+    case 'cubic metres': return val / 800;
+    default:             return val;
+  }
+};
+
 /**
  * POST /api/transactions
  * Buyer requests a deal on a material
@@ -129,6 +153,8 @@ const updateTransactionStatus = async (req, res) => {
     const transaction = await Transaction.findById(req.params.id);
     if (!transaction) return res.status(404).json({ message: 'Transaction not found' });
 
+    const isTransitioningToCompleted = (status === 'completed' && transaction.status !== 'completed');
+
     // Only seller can accept/reject; both parties can cancel
     const isSeller = transaction.seller.toString() === req.user._id.toString();
     const isBuyer  = transaction.buyer.toString()  === req.user._id.toString();
@@ -143,29 +169,106 @@ const updateTransactionStatus = async (req, res) => {
     transaction.status = status;
     if (sellerNote) transaction.sellerNote = sellerNote;
 
-    // Automatically reject other pending requests when accepted/completed
-    if (status === 'accepted' || status === 'completed') {
-      await Transaction.updateMany(
-        {
-          _id: { $ne: transaction._id },
-          material: transaction.material,
-          status: 'pending'
-        },
-        {
-          $set: {
-            status: 'rejected',
-            sellerNote: 'This listing is no longer available as another offer was accepted.'
-          }
-        }
-      );
-    }
+    let matTitle = 'Material';
 
-    // Mark material as sold when transaction completes
+    // Mark material as sold (or decrement quantity) when transaction completes
     if (status === 'completed') {
       transaction.completedAt = new Date();
-      const material = await Material.findByIdAndUpdate(transaction.material, { status: 'sold' });
-      const matTitle = material ? material.title : 'Material';
+      const material = await Material.findById(transaction.material);
+      if (material) {
+        matTitle = material.title;
+        if (isTransitioningToCompleted) {
+          const materialQtyKg = convertToKg(material.quantity.value, material.quantity.unit);
+          const txQtyKg = convertToKg(transaction.quantity.value, transaction.quantity.unit);
+          const remainingKg = Math.max(0, materialQtyKg - txQtyKg);
 
+          if (remainingKg > 0.01) {
+            material.quantity.value = convertFromKg(remainingKg, material.quantity.unit);
+            material.status = 'active';
+          } else {
+            material.quantity.value = 0;
+            material.status = 'sold';
+          }
+          await material.save();
+        }
+      }
+    }
+
+    // Reject other pending/accepted requests that can no longer be fulfilled
+    if (status === 'accepted' || status === 'completed') {
+      const material = await Material.findById(transaction.material);
+      if (material) {
+        const io = req.app.get('io');
+        const materialQtyKg = convertToKg(material.quantity.value, material.quantity.unit);
+        
+        // Sum of all other accepted transactions (excluding the current one)
+        const otherAcceptedTxs = await Transaction.find({
+          material: material._id,
+          status: 'accepted',
+          _id: { $ne: transaction._id }
+        });
+        
+        let acceptedQtyKg = 0;
+        for (const tx of otherAcceptedTxs) {
+          acceptedQtyKg += convertToKg(tx.quantity.value, tx.quantity.unit);
+        }
+        
+        // Calculate uncommitted quantity
+        let uncommittedKg = materialQtyKg - acceptedQtyKg;
+        // If the current transaction is being accepted, it becomes committed too.
+        if (status === 'accepted') {
+          const currentTxQtyKg = convertToKg(transaction.quantity.value, transaction.quantity.unit);
+          uncommittedKg = Math.max(0, uncommittedKg - currentTxQtyKg);
+        }
+        
+        // Find other pending transactions for this material
+        const pendingTxs = await Transaction.find({
+          material: material._id,
+          status: 'pending',
+          _id: { $ne: transaction._id }
+        });
+        
+        for (const pendingTx of pendingTxs) {
+          const pendingQtyKg = convertToKg(pendingTx.quantity.value, pendingTx.quantity.unit);
+          if (pendingQtyKg > uncommittedKg) {
+            pendingTx.status = 'rejected';
+            pendingTx.sellerNote = 'This listing no longer has enough quantity to fulfill this request.';
+            await pendingTx.save();
+            
+            // Notify buyer in real-time
+            if (io) {
+              io.to(pendingTx.buyer.toString()).emit('transactionUpdated', {
+                type: 'status_change',
+                status: 'rejected',
+                transaction: pendingTx
+              });
+            }
+          }
+        }
+        
+        // Also reject already accepted transactions if they can no longer be fulfilled
+        if (status === 'completed') {
+          for (const acceptedTx of otherAcceptedTxs) {
+            const acceptedQtyKg = convertToKg(acceptedTx.quantity.value, acceptedTx.quantity.unit);
+            if (acceptedQtyKg > materialQtyKg) {
+              acceptedTx.status = 'rejected';
+              acceptedTx.sellerNote = 'This listing no longer has enough quantity to fulfill this request.';
+              await acceptedTx.save();
+              
+              if (io) {
+                io.to(acceptedTx.buyer.toString()).emit('transactionUpdated', {
+                  type: 'status_change',
+                  status: 'rejected',
+                  transaction: acceptedTx
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (status === 'completed') {
       // Update seller profile
       const sellerUser = await User.findById(transaction.seller);
       if (sellerUser) {

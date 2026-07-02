@@ -29,6 +29,18 @@ const convertToKg = (value, unit) => {
   }
 };
 
+const convertFromKg = (valueInKg, targetUnit) => {
+  const val = Number(valueInKg) || 0;
+  switch (targetUnit) {
+    case 'kg':           return val;
+    case 'tonnes':       return val / 1000;
+    case 'litres':       return val;
+    case 'units':        return val / 10;
+    case 'cubic metres': return val / 800;
+    default:             return val;
+  }
+};
+
 /**
  * POST /api/materials
  * Create a new material listing (Seller only)
@@ -537,27 +549,37 @@ const acceptBid = async (req, res) => {
       sellerNote:  'Deal closed via auction bid acceptance.',
     });
 
-    // Create rejected transactions for ALL other unique bidders
+    const materialQtyKg = convertToKg(material.quantity?.value || 0, material.quantity?.unit || 'tonnes');
+    const winBidQtyKg = bid.quantity ? bid.quantity : materialQtyKg;
+    const remainingKg = Math.max(0, materialQtyKg - winBidQtyKg);
+    const isFullySold = remainingKg <= 0.01;
+
+    // Create rejected transactions for conflicting bidders and delete their bids
     const allBids = await Bid.find({ material: material._id, _id: { $ne: bid._id } });
     const rejectedBidders = new Set();
     for (const otherBid of allBids) {
       const bidderId = otherBid.bidder.toString();
-      if (!rejectedBidders.has(bidderId)) {
-        rejectedBidders.add(bidderId);
-        await Transaction.create({
-          buyer:      otherBid.bidder,
-          seller:     req.user._id,
-          material:   material._id,
-          status:     'rejected',
-          quantity:   otherBid.quantity
-            ? { value: otherBid.quantity, unit: 'kg' }
-            : { value: material.quantity?.value || 0, unit: material.quantity?.unit || 'tonnes' },
-          agreedPrice: otherBid.amount,
-          carbonSaved: 0,
-          sellerNote: 'Another bid was accepted for this auction listing.',
-        });
+      const otherQtyKg = otherBid.quantity ? otherBid.quantity : materialQtyKg;
+      if (otherQtyKg > remainingKg || isFullySold) {
+        if (!rejectedBidders.has(bidderId)) {
+          rejectedBidders.add(bidderId);
+          await Transaction.create({
+            buyer:      otherBid.bidder,
+            seller:     req.user._id,
+            material:   material._id,
+            status:     'rejected',
+            quantity:   otherBid.quantity
+              ? { value: otherBid.quantity, unit: 'kg' }
+              : { value: material.quantity?.value || 0, unit: material.quantity?.unit || 'tonnes' },
+            agreedPrice: otherBid.amount,
+            carbonSaved: 0,
+            sellerNote: isFullySold ? 'Another bid was accepted for this auction listing.' : 'Another bid was accepted and there is not enough remaining quantity for your bid.',
+          });
+        }
+        await Bid.deleteOne({ _id: otherBid._id });
       }
     }
+
 
     // Update seller profile
     const sellerUser = await User.findById(req.user._id);
@@ -605,10 +627,21 @@ const acceptBid = async (req, res) => {
       await buyerUser.save();
     }
 
-    // Mark material as sold and record winning bid
-    material.status = 'sold';
-    if (material.isAuction) {
-      material.auctionDetails.winningBid = bid._id;
+    // Mark material as sold or update quantity and status
+    if (isFullySold) {
+      material.status = 'sold';
+      if (material.isAuction) {
+        material.auctionDetails.winningBid = bid._id;
+      }
+      material.quantity.value = 0;
+    } else {
+      material.status = 'active';
+      material.quantity.value = convertFromKg(remainingKg, material.quantity.unit);
+      // Delete winning bid from active list since it is processed
+      await Bid.deleteOne({ _id: bid._id });
+      // Update highest bid from remaining bids
+      const remainingBids = await Bid.find({ material: material._id }).sort('-amount');
+      material.auctionDetails.currentHighestBid = remainingBids.length > 0 ? remainingBids[0].amount : (material.auctionDetails.startingPrice || 0);
     }
     await material.save();
 

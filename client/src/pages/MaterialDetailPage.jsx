@@ -155,15 +155,17 @@ const MaterialDetailPage = () => {
   };
 
   const handleAcceptBid = async (bidId) => {
-    const confirmed = await confirmToast('Accept this bid and close the listing?', {
+    const confirmed = await confirmToast('Accept this bid?', {
       confirmText: 'Accept bid',
       icon: '🤝',
     });
     if (!confirmed) return;
     try {
-      await materialService.acceptBid(id, bidId);
-      toast.success('Bid accepted! Material marked as sold.');
-      setMaterial(prev => ({ ...prev, status: 'sold' }));
+      const { data } = await materialService.acceptBid(id, bidId);
+      const isSold = data.material.status === 'sold';
+      toast.success(isSold ? 'Bid accepted! Material marked as sold.' : 'Bid accepted! Listing quantity updated.');
+      setMaterial(data.material);
+      materialService.getBids(id).then(res => setBids(res.data.bids)).catch(console.error);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to accept bid');
     }
